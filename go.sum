@@ -1,0 +1,4 @@
+github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
+github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
+github.com/matehaxor03/holistic_db_client v0.0.2 h1:yjgiQSvBX3A17eboizk/YO5OpsaSljtDXMGsdfAx23Y=
+github.com/matehaxor03/holistic_db_client v0.0.2/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
