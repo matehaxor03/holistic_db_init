@@ -129,6 +129,7 @@ func InitDB() []error {
 		return errors
 	}
 
+	/*
 	_, database_creation_err := db.Exec("CREATE DATABASE IF NOT EXISTS " + db_name + " CHARACTER SET utf8 COLLATE utf8_general_ci")
 	if database_creation_err != nil {
 		fmt.Println("error creating database")
@@ -136,14 +137,23 @@ func InitDB() []error {
 		defer db.Close()
 		return errors
 	}
+	*/
 
+	_, result, create_migration_user_errs = client.CreateUser(migration_db_username, migration_db_password, "%", options)
+	if create_migration_user_errs != nil {
+		errors = append(errors, create_migration_user_errs...)
+		fmt.Println(fmt.Errorf("%s", *result))
+		return errors
+	}
+
+	/*
 	_, create_user_migration_err := db.Exec("CREATE USER IF NOT EXISTS '" + migration_db_username + "'@'%' IDENTIFIED BY '" + migration_db_password + "'")
 	if create_user_migration_err != nil {
 		fmt.Println("error creating migration user")
 		errors = append(errors, create_user_migration_err)
 		defer db.Close()
 		return errors
-	}
+	}*/
 
 	_, grant_user_migration_permissions_err := db.Exec("GRANT ALL ON " + db_name + ".* To '" + migration_db_username + "'@'%'")
 	if grant_user_migration_permissions_err != nil {

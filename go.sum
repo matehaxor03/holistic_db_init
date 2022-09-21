@@ -2,3 +2,7 @@ github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfC
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/matehaxor03/holistic_db_client v0.0.2 h1:yjgiQSvBX3A17eboizk/YO5OpsaSljtDXMGsdfAx23Y=
 github.com/matehaxor03/holistic_db_client v0.0.2/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.3 h1:EPvdCbeFPyYYImiBKEZtQ08k4wI5ORFNbPgr9DR0/Oc=
+github.com/matehaxor03/holistic_db_client v0.0.3/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.4 h1:kK46L/tRM7DC0qhEtRz+mZmxrql/oL0tdUaNIFk8HwQ=
+github.com/matehaxor03/holistic_db_client v0.0.4/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
