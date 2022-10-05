@@ -113,20 +113,45 @@ func InitDB() []error {
 		return errors
 	}
 
-	host := class.NewHost(&db_hostname, &db_port_number)
-	credentials :=  class.NewCredentials(&root_db_username, &root_db_password)
-	client := class.NewClient(host, credentials, nil)
+	host, host_errors := class.NewHost(&db_hostname, &db_port_number)
+	credentials, credential_errors :=  class.NewCredentials(&root_db_username, &root_db_password)
+	client, client_errors := class.NewClient(host, credentials, nil)
+
 	encoding := "utf8"
 	collate := "utf8_general_ci"
 	database_create_options := class.NewDatabaseCreateOptions(&encoding, &collate)
-	options := make(map[string][]string)
-	options["LOGIC"] = []string{"IF", "NOT" "EXISTS"}
 	
-	_, result, database_creation_errs := client.CreateDatabase(&db_name, database_create_options, options)
+	options := make(map[string]map[string][][]string)
+	logic_options := make(map[string][][]string)
+	logic_options["CREATE"] = append(logic_options["CREATE"], class.GET_LOGIC_STATEMENT_IF_NOT_EXISTS())
+	options[class.GET_LOGIC_STATEMENT_FIELD_NAME()] = logic_options
+
+	if host_errors != nil {
+		errors = append(errors, host_errors...)
+	}
+
+	if credential_errors != nil {
+		errors = append(errors, credential_errors...)
+	}
+
+	if client_errors != nil {
+		errors = append(errors, client_errors...)
+	}
+
+	if len(errors) > 0 {
+		return errors
+	}
+	
+	database, result, database_creation_errs := client.CreateDatabase(&db_name, database_create_options, options)
 	if database_creation_errs != nil {
 		errors = append(errors, database_creation_errs...)
 		fmt.Println(fmt.Errorf("%s", *result))
 		return errors
+	}
+	
+	use_database_errors := client.UseDatabase(database)
+	if use_database_errors != nil {
+		return use_database_errors
 	}
 
 	/*
@@ -139,7 +164,8 @@ func InitDB() []error {
 	}
 	*/
 
-	_, result, create_migration_user_errs = client.CreateUser(migration_db_username, migration_db_password, "%", options)
+	localhost_IP := "127.0.0.1"
+	migration_db_user, result, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &localhost_IP, options)
 	if create_migration_user_errs != nil {
 		errors = append(errors, create_migration_user_errs...)
 		fmt.Println(fmt.Errorf("%s", *result))
@@ -155,13 +181,21 @@ func InitDB() []error {
 		return errors
 	}*/
 
-	_, grant_user_migration_permissions_err := db.Exec("GRANT ALL ON " + db_name + ".* To '" + migration_db_username + "'@'%'")
+	_, _, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
+	if grant_migration_db_user_errors != nil {
+		return grant_migration_db_user_errors
+	}
+
+	//fmt.Println(*stdout)
+
+
+	/*_, grant_user_migration_permissions_err := db.Exec("GRANT ALL ON " + db_name + ".* To '" + migration_db_username + "'@'%'")
 	if grant_user_migration_permissions_err != nil {
 		fmt.Println("error granting migration user permissions")
 		errors = append(errors, grant_user_migration_permissions_err)
 		defer db.Close()
 		return errors
-	}
+	}*/
 
 	_, create_user_write_err := db.Exec("CREATE USER IF NOT EXISTS '" + write_db_username + "'@'%' IDENTIFIED BY '" + write_db_password + "'")
 	if create_user_write_err != nil {
