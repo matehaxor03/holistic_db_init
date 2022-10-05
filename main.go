@@ -1,19 +1,13 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 	
 	class "github.com/matehaxor03/holistic_db_client/class"
-
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
@@ -24,56 +18,49 @@ func main() {
 	}
 
 	os.Exit(0)
-
 }
 
 func InitDB() []error {
 	var errors []error
 
-	root_db_username, root_db_password := getCredentials("ROOT")
-	root_db_credentials_errs := validateCredentials(root_db_username, root_db_password)
-
-	if root_db_credentials_errs != nil {
-		errors = append(errors, root_db_credentials_errs...)
+	root_db_username, root_db_username_err := getUsername("ROOT")
+	if root_db_username_err != nil {
+		errors = append(errors, root_db_username_err...)
+	}
+	
+	migration_db_username, migration_db_username_err := getUsername("MIGRATION")
+	if migration_db_username_err != nil {
+		errors = append(errors, migration_db_username_err...)
 	}
 
-	migration_db_username, migration_db_password := getCredentials("MIGRATION")
-	migration_db_credentials_errs := validateCredentials(migration_db_username, migration_db_password)
-
-	if migration_db_credentials_errs != nil {
-		errors = append(errors, migration_db_credentials_errs...)
+	write_db_username, write_db_username_err := getUsername("WRITE")
+	if write_db_username_err != nil {
+		errors = append(errors, write_db_username_err...)
 	}
 
-	write_db_username, write_db_password := getCredentials("WRITE")
-	write_db_credentials_errs := validateCredentials(write_db_username, write_db_password)
 
-	if write_db_credentials_errs != nil {
-		errors = append(errors, write_db_credentials_errs...)
+	read_db_username, read_db_username_err := getUsername("READ")
+	if read_db_username_err != nil {
+		errors = append(errors, read_db_username_err...)
 	}
 
-	read_db_username, read_db_password := getCredentials("READ")
-	read_db_credentials_errs := validateCredentials(read_db_username, read_db_password)
-
-	if read_db_credentials_errs != nil {
-		errors = append(errors, read_db_credentials_errs...)
+	db_hostname, db_hostname_errs := getDatabaseHostname()
+	if db_hostname_errs != nil {
+		errors = append(errors, db_hostname_errs...)
 	}
+	
+	db_port_number, port_number_errs := getPortNumber()
+	if port_number_errs != nil {
+		errors = append(errors, port_number_errs...)
+	}	
 
-	db_hostname := getDatabaseHostname()
-	db_hostname_errors := validateHostname(db_hostname)
-	if db_hostname_errors != nil {
-		errors = append(errors, db_hostname_errors...)
-	}
+	db_name, db_name_errs := getDatabaseName()
+	if db_name_errs != nil {
+		errors = append(errors, db_name_errs...)
+	}	
 
-	db_port_number := getPortNumber()
-	db_port_number_err := validatePortNumber(db_port_number)
-	if db_port_number_err != nil {
-		errors = append(errors, db_port_number_err...)
-	}
-
-	db_name := getDatabaseName()
-	db_name_err := validateDatabaseName(db_name)
-	if db_name_err != nil {
-		errors = append(errors, db_name_err...)
+	if len(errors) > 0 {
+		return errors
 	}
 
 	usernames := [...]string{root_db_username, migration_db_username, write_db_username, read_db_username}
@@ -89,33 +76,12 @@ func InitDB() []error {
 		}
 	}
 
-	root_db_password = base64.StdEncoding.EncodeToString([]byte(root_db_password))
-	migration_db_password = base64.StdEncoding.EncodeToString([]byte(migration_db_password))
-	write_db_password = base64.StdEncoding.EncodeToString([]byte(migration_db_password))
-	read_db_password = base64.StdEncoding.EncodeToString([]byte(migration_db_password))
-
 	if len(errors) > 0 {
 		return errors
 	}
 
-	cfg_root := mysql.Config{
-		User:   root_db_username,
-		Passwd: root_db_password,
-		Net:    "tcp",
-		Addr:   db_hostname + ":" + db_port_number,
-	}
-
-	db, dberr := sql.Open("mysql", cfg_root.FormatDSN())
-
-	if dberr != nil {
-		errors = append(errors, dberr)
-		defer db.Close()
-		return errors
-	}
-
 	host, host_errors := class.NewHost(&db_hostname, &db_port_number)
-	credentials, credential_errors :=  class.NewCredentials(&root_db_username, &root_db_password)
-	client, client_errors := class.NewClient(host, credentials, nil)
+	client, client_errors := class.NewClient(host, &root_db_username, nil)
 
 	encoding := "utf8"
 	collate := "utf8_general_ci"
@@ -128,10 +94,6 @@ func InitDB() []error {
 
 	if host_errors != nil {
 		errors = append(errors, host_errors...)
-	}
-
-	if credential_errors != nil {
-		errors = append(errors, credential_errors...)
 	}
 
 	if client_errors != nil {
@@ -157,8 +119,7 @@ func InitDB() []error {
 	localhost_IP := "127.0.0.1"
 	migration_db_user, _, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &localhost_IP, options)
 	if create_migration_user_errs != nil {
-		errors = append(errors, create_migration_user_errs...)
-		return errors
+		return create_migration_user_errs
 	}
 
 	_, _, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
@@ -168,8 +129,7 @@ func InitDB() []error {
 
 	write_db_user, _, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &localhost_IP, options)
 	if write_user_errs != nil {
-		errors = append(errors, write_user_errs...)
-		return errors
+		return write_user_errs
 	}
 
 	_, _, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", "*")
@@ -184,8 +144,7 @@ func InitDB() []error {
 
 	read_db_user, _, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &localhost_IP, options)
 	if read_user_errs != nil {
-		errors = append(errors, read_user_errs...)
-		return errors
+		return read_user_errs
 	}
 
 	_, _, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", "*")
@@ -193,26 +152,7 @@ func InitDB() []error {
 		return grant_read_db_user_errors
 	}
 
-	db.Close()
-
-	cfg_migration := mysql.Config{
-		User:   migration_db_username,
-		Passwd: migration_db_password,
-		Net:    "tcp",
-		Addr:   db_hostname + ":" + db_port_number,
-		DBName: db_name,
-	}
-
-	db, dberr = sql.Open("mysql", cfg_migration.FormatDSN())
-
-	if dberr != nil {
-		errors = append(errors, dberr)
-		return errors
-	}
-
-	defer db.Close()
-
-
+	/*
 	_, create_table_database_migration_err := db.Exec("CREATE TABLE IF NOT EXISTS DatabaseMigration (databaseMigrationId BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, current BIGINT NOT NULL DEFAULT -1, desired BIGINT NOT NULL DEFAULT 0, created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
 	if create_table_database_migration_err != nil {
 		fmt.Println("error creating database_migration table")
@@ -247,12 +187,25 @@ func InitDB() []error {
 		errors = append(errors, insert_record_database_migration_err)
 		return errors
 	}
-
+	*/
 	return nil
 }
 
-func getDatabaseName() string {
-	return os.Getenv("HOLISTIC_DB_NAME")
+func getDatabaseName() (string, []error) {
+	var errors []error
+	environment_variable := "HOLISTIC_DB_NAME"
+	database_name := os.Getenv(environment_variable)
+	if database_name == "" {
+		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
+		return "", errors
+	}
+
+	database_name_errors := validateDatabaseName(database_name)
+	if database_name_errors != nil {
+		return "", database_name_errors
+	}
+
+	return database_name, nil
 }
 
 func validateDatabaseName(db_name string) []error {
@@ -275,8 +228,41 @@ func validateDatabaseName(db_name string) []error {
 	return nil
 }
 
-func getPortNumber() string {
-	return os.Getenv("HOLISTIC_DB_PORT_NUMBER")
+func validateUsername(username string) []error {
+	var errors []error
+	regex_name_exp := `^[A-Za-z]+$`
+	regex_name_matcher, regex_name_matcher_errors := regexp.Compile(regex_name_exp)
+	if regex_name_matcher_errors != nil {
+		errors = append(errors, fmt.Errorf("username regex %s did not compile %s", regex_name_exp, regex_name_matcher_errors.Error()))
+		return errors
+	}
+
+	if !regex_name_matcher.MatchString(username) {
+		errors = append(errors, fmt.Errorf("username %s did not match regex %s", username, regex_name_exp))
+	}
+
+	if len(errors) > 0 {
+		return errors
+	}
+
+	return nil
+}
+
+func getPortNumber() (string, []error) {
+	var errors []error
+	environment_variable := "HOLISTIC_DB_PORT_NUMBER"
+	port_number := os.Getenv(environment_variable)
+	if port_number == "" {
+		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
+		return "", errors
+	}
+
+	port_number_errors := validatePortNumber(port_number)
+	if port_number_errors != nil {
+		return "", port_number_errors
+	}
+
+	return port_number, nil
 }
 
 func validatePortNumber(db_port_number string) []error {
@@ -299,8 +285,21 @@ func validatePortNumber(db_port_number string) []error {
 	return nil
 }
 
-func getDatabaseHostname() string {
-	return os.Getenv("HOLISTIC_DB_HOSTNAME")
+func getDatabaseHostname() (string, []error) {
+	var errors []error
+	environment_variable := "HOLISTIC_DB_HOSTNAME"
+	host_name := os.Getenv(environment_variable)
+	if host_name == "" {
+		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
+		return "", errors
+	}
+
+	host_name_errors := validateHostname(host_name)
+	if host_name_errors != nil {
+		return "", host_name_errors
+	}
+
+	return host_name, nil
 }
 
 func validateHostname(db_hostname string) []error {
@@ -345,79 +344,19 @@ func validateHostname(db_hostname string) []error {
 	return nil
 }
 
-func getCredentials(label string) (string, string) {
-	username := os.Getenv("HOLISTIC_DB_" + label + "_USERNAME")
-	password := os.Getenv("HOLISTIC_DB_" + label + "_PASSWORD")
-	return username, password
-}
-
-func validateCredentials(username string, password string) []error {
+func getUsername(label string) (string, []error) {
 	var errors []error
-
-	username_regex_exp := `^[A-Za-z]+$`
-	username_regex_matcher, username_regex_errors := regexp.Compile(username_regex_exp)
-	if username_regex_errors != nil {
-		errors = append(errors, fmt.Errorf("username regex %s did not compile %s", username_regex_exp, username_regex_errors.Error()))
+	environment_variable := "HOLISTIC_DB_" + label + "_USERNAME"
+	username := os.Getenv(environment_variable)
+	if username == "" {
+		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
+		return "", errors
 	}
 
-	if !username_regex_matcher.MatchString(username) {
-		errors = append(errors, fmt.Errorf("username %s did not match regex %s", username, username_regex_exp))
+	username_errors := validateUsername(username)
+	if username_errors != nil {
+		return "", username_errors
 	}
 
-	password_errors := validatePassword(password)
-	if password_errors != nil {
-		errors = append(errors, password_errors...)
-	}
-
-	return errors
-}
-
-func validatePassword(password string) []error {
-	var uppercasePresent bool
-	var lowercasePresent bool
-	var numberPresent bool
-	var specialCharPresent bool
-	const minPassLength = 8
-	var passLen int
-	var errors []error
-
-	for _, ch := range password {
-		switch {
-		case unicode.IsNumber(ch):
-			numberPresent = true
-			passLen++
-		case unicode.IsUpper(ch):
-			uppercasePresent = true
-			passLen++
-		case unicode.IsLower(ch):
-			lowercasePresent = true
-			passLen++
-		case unicode.IsPunct(ch) || unicode.IsSymbol(ch):
-			specialCharPresent = true
-			passLen++
-		}
-	}
-
-	if !lowercasePresent {
-		errors = append(errors, fmt.Errorf("lowercase letter missing"))
-	}
-	if !uppercasePresent {
-		errors = append(errors, fmt.Errorf("uppercase letter missing"))
-	}
-	if !numberPresent {
-		errors = append(errors, fmt.Errorf("at least one numeric character required"))
-	}
-	if !specialCharPresent {
-		errors = append(errors, fmt.Errorf("at least one special character required"))
-
-	}
-	if passLen <= minPassLength {
-		errors = append(errors, fmt.Errorf("password length must be at least %d characters long", minPassLength))
-	}
-
-	if len(errors) > 0 {
-		return errors
-	}
-
-	return nil
+	return username, nil
 }
