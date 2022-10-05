@@ -154,79 +154,43 @@ func InitDB() []error {
 		return use_database_errors
 	}
 
-	/*
-	_, database_creation_err := db.Exec("CREATE DATABASE IF NOT EXISTS " + db_name + " CHARACTER SET utf8 COLLATE utf8_general_ci")
-	if database_creation_err != nil {
-		fmt.Println("error creating database")
-		errors = append(errors, database_creation_err)
-		defer db.Close()
-		return errors
-	}
-	*/
-
 	localhost_IP := "127.0.0.1"
-	migration_db_user, result, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &localhost_IP, options)
+	migration_db_user, _, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &localhost_IP, options)
 	if create_migration_user_errs != nil {
 		errors = append(errors, create_migration_user_errs...)
-		fmt.Println(fmt.Errorf("%s", *result))
 		return errors
 	}
-
-	/*
-	_, create_user_migration_err := db.Exec("CREATE USER IF NOT EXISTS '" + migration_db_username + "'@'%' IDENTIFIED BY '" + migration_db_password + "'")
-	if create_user_migration_err != nil {
-		fmt.Println("error creating migration user")
-		errors = append(errors, create_user_migration_err)
-		defer db.Close()
-		return errors
-	}*/
 
 	_, _, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
 	if grant_migration_db_user_errors != nil {
 		return grant_migration_db_user_errors
 	}
 
-	//fmt.Println(*stdout)
-
-
-	/*_, grant_user_migration_permissions_err := db.Exec("GRANT ALL ON " + db_name + ".* To '" + migration_db_username + "'@'%'")
-	if grant_user_migration_permissions_err != nil {
-		fmt.Println("error granting migration user permissions")
-		errors = append(errors, grant_user_migration_permissions_err)
-		defer db.Close()
-		return errors
-	}*/
-
-	_, create_user_write_err := db.Exec("CREATE USER IF NOT EXISTS '" + write_db_username + "'@'%' IDENTIFIED BY '" + write_db_password + "'")
-	if create_user_write_err != nil {
-		fmt.Println("error creating write user")
-		errors = append(errors, create_user_write_err)
-		defer db.Close()
+	write_db_user, _, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &localhost_IP, options)
+	if write_user_errs != nil {
+		errors = append(errors, write_user_errs...)
 		return errors
 	}
 
-	_, grant_user_write_permissions_err := db.Exec("GRANT INSERT, UPDATE ON " + db_name + ".* To '" + write_db_username + "'@'%'")
-	if grant_user_write_permissions_err != nil {
-		fmt.Println("error granting write user permissions")
-		errors = append(errors, grant_user_write_permissions_err)
-		defer db.Close()
+	_, _, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", "*")
+	if grant_write_db_user_errors != nil {
+		return grant_write_db_user_errors
+	}
+
+	_, _, grant_write_db_user_errors2 := client.Grant(write_db_user, "UPDATE", "*")
+	if grant_write_db_user_errors2 != nil {
+		return grant_write_db_user_errors2
+	}
+
+	read_db_user, _, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &localhost_IP, options)
+	if read_user_errs != nil {
+		errors = append(errors, read_user_errs...)
 		return errors
 	}
 
-	_, create_user_read_err := db.Exec("CREATE USER IF NOT EXISTS '" + read_db_username + "'@'%' IDENTIFIED BY '" + read_db_password + "'")
-	if create_user_read_err != nil {
-		fmt.Println("error creating read user")
-		errors = append(errors, create_user_read_err)
-		defer db.Close()
-		return errors
-	}
-
-	_, grant_user_read_permissions_err := db.Exec("GRANT SELECT ON " + db_name + ".* To '" + read_db_username + "'@'%'")
-	if grant_user_read_permissions_err != nil {
-		fmt.Println("error granting read user permissions")
-		errors = append(errors, grant_user_read_permissions_err)
-		defer db.Close()
-		return errors
+	_, _, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", "*")
+	if grant_read_db_user_errors != nil {
+		return grant_read_db_user_errors
 	}
 
 	db.Close()
