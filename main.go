@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"regexp"
-	"strconv"
+	"io/ioutil"
 	"strings"
-	
+	"bufio"
 	class "github.com/matehaxor03/holistic_db_client/class"
 )
 
@@ -23,41 +22,25 @@ func main() {
 func InitDB() []error {
 	var errors []error
 
-	root_db_username, root_db_username_err := getUsername("ROOT")
-	if root_db_username_err != nil {
-		errors = append(errors, root_db_username_err...)
+	db_hostname, db_port_number, _, root_db_username, _, root_details_errors := getDetails("root")
+	if root_details_errors != nil {
+		errors = append(errors, root_details_errors...)
 	}
 	
-	migration_db_username, migration_db_username_err := getUsername("MIGRATION")
-	if migration_db_username_err != nil {
-		errors = append(errors, migration_db_username_err...)
+	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getDetails("migration")
+	if migration_details_errors != nil {
+		errors = append(errors, migration_details_errors...)
 	}
 
-	write_db_username, write_db_username_err := getUsername("WRITE")
-	if write_db_username_err != nil {
-		errors = append(errors, write_db_username_err...)
+	_, _, _, write_db_username, write_db_password, write_details_errors := getDetails("write")
+	if write_details_errors != nil {
+		errors = append(errors, write_details_errors...)
 	}
 
-
-	read_db_username, read_db_username_err := getUsername("READ")
-	if read_db_username_err != nil {
-		errors = append(errors, read_db_username_err...)
+	_, _, _, read_db_username, read_db_password, read_details_errors := getDetails("read")
+	if read_details_errors != nil {
+		errors = append(errors, read_details_errors...)
 	}
-
-	db_hostname, db_hostname_errs := getDatabaseHostname()
-	if db_hostname_errs != nil {
-		errors = append(errors, db_hostname_errs...)
-	}
-	
-	db_port_number, port_number_errs := getPortNumber()
-	if port_number_errs != nil {
-		errors = append(errors, port_number_errs...)
-	}	
-
-	db_name, db_name_errs := getDatabaseName()
-	if db_name_errs != nil {
-		errors = append(errors, db_name_errs...)
-	}	
 
 	if len(errors) > 0 {
 		return errors
@@ -191,172 +174,79 @@ func InitDB() []error {
 	return nil
 }
 
-func getDatabaseName() (string, []error) {
-	var errors []error
-	environment_variable := "HOLISTIC_DB_NAME"
-	database_name := os.Getenv(environment_variable)
-	if database_name == "" {
-		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
-		return "", errors
-	}
-
-	database_name_errors := validateDatabaseName(database_name)
-	if database_name_errors != nil {
-		return "", database_name_errors
-	}
-
-	return database_name, nil
-}
-
-func validateDatabaseName(db_name string) []error {
-	var errors []error
-	db_name_regex_name_exp := `^[A-Za-z]+$`
-	db_name_regex_name_matcher, db_name_regex_name_matcher_errors := regexp.Compile(db_name_regex_name_exp)
-	if db_name_regex_name_matcher_errors != nil {
-		errors = append(errors, fmt.Errorf("database name regex %s did not compile %s", db_name_regex_name_exp, db_name_regex_name_matcher_errors.Error()))
-		return errors
-	}
-
-	if !db_name_regex_name_matcher.MatchString(db_name) {
-		errors = append(errors, fmt.Errorf("database name %s did not match regex %s", db_name, db_name_regex_name_exp))
-	}
-
-	if len(errors) > 0 {
-		return errors
-	}
-
-	return nil
-}
-
-func validateUsername(username string) []error {
-	var errors []error
-	regex_name_exp := `^[A-Za-z]+$`
-	regex_name_matcher, regex_name_matcher_errors := regexp.Compile(regex_name_exp)
-	if regex_name_matcher_errors != nil {
-		errors = append(errors, fmt.Errorf("username regex %s did not compile %s", regex_name_exp, regex_name_matcher_errors.Error()))
-		return errors
-	}
-
-	if !regex_name_matcher.MatchString(username) {
-		errors = append(errors, fmt.Errorf("username %s did not match regex %s", username, regex_name_exp))
-	}
-
-	if len(errors) > 0 {
-		return errors
-	}
-
-	return nil
-}
-
-func getPortNumber() (string, []error) {
-	var errors []error
-	environment_variable := "HOLISTIC_DB_PORT_NUMBER"
-	port_number := os.Getenv(environment_variable)
-	if port_number == "" {
-		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
-		return "", errors
-	}
-
-	port_number_errors := validatePortNumber(port_number)
-	if port_number_errors != nil {
-		return "", port_number_errors
-	}
-
-	return port_number, nil
-}
-
-func validatePortNumber(db_port_number string) []error {
-	var errors []error
-	portnumber_regex_name_exp := `\d+`
-	portnumber_regex_name_matcher, port_number_regex_name_matcher_errors := regexp.Compile(portnumber_regex_name_exp)
-	if port_number_regex_name_matcher_errors != nil {
-		errors = append(errors, fmt.Errorf("portnumber regex %s did not compile %s", portnumber_regex_name_exp, port_number_regex_name_matcher_errors.Error()))
-		return errors
-	}
-
-	if !portnumber_regex_name_matcher.MatchString(db_port_number) {
-		errors = append(errors, fmt.Errorf("portnumber %s did not match regex %s", db_port_number, portnumber_regex_name_exp))
-	}
-
-	if len(errors) > 0 {
-		return errors
-	}
-
-	return nil
-}
-
-func getDatabaseHostname() (string, []error) {
-	var errors []error
-	environment_variable := "HOLISTIC_DB_HOSTNAME"
-	host_name := os.Getenv(environment_variable)
-	if host_name == "" {
-		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
-		return "", errors
-	}
-
-	host_name_errors := validateHostname(host_name)
-	if host_name_errors != nil {
-		return "", host_name_errors
-	}
-
-	return host_name, nil
-}
-
-func validateHostname(db_hostname string) []error {
+func getDetails(username string) (string, string, string, string, string, []error) {
 	var errors []error
 
-	simpleHostname := false
-	ipAddress := true
-	complexHostname := true
+	files, err := ioutil.ReadDir("./")
+    if err != nil {
+		errors = append(errors, err)
+		return "", "", "", "", "", errors
+    }
 
-	hostname_regex_name_exp := `^[A-Za-z]+$`
-	hostname_regex_name_matcher, hostname_regex_name_matcher_errors := regexp.Compile(hostname_regex_name_exp)
-	if hostname_regex_name_matcher_errors != nil {
-		errors = append(errors, fmt.Errorf("username regex %s did not compile %s", hostname_regex_name_exp, hostname_regex_name_matcher_errors.Error()))
-	}
-
-	simpleHostname = hostname_regex_name_matcher.MatchString(db_hostname)
-
-	parts := strings.Split(db_hostname, ".")
-	if len(parts) == 4 {
-		for _, value := range parts {
-			_, err := strconv.Atoi(value)
-			if err != nil {
-				ipAddress = false
-			}
+	filename := ""
+    for _, file := range files {
+		if file.IsDir() {
+			continue
 		}
-	}
 
-	for _, value := range parts {
-		if !hostname_regex_name_matcher.MatchString(value) {
-			complexHostname = false
+		currentFileName := file.Name()
+
+		if !strings.HasPrefix(currentFileName, "holistic_db_config:") {
+			continue
 		}
+
+		if !strings.HasSuffix(currentFileName, username + ".config") {
+			continue
+		}		
+		filename = currentFileName
+    }
+
+	if filename == "" {
+		errors = append(errors, fmt.Errorf("database config for %s not found ust be in the format: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", username))
+		return "", "", "", "", "", errors
 	}
 
-	if !(simpleHostname || complexHostname || ipAddress) {
-		errors = append(errors, fmt.Errorf("hostname name is invalid %s", db_hostname))
+	parts := strings.Split(filename, ":")
+	if len(parts) != 5 {
+		errors = append(errors, fmt.Errorf("database config for %s not found ust be in the format: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", username))
+		return "", "", "", "", "", errors
+	}
+
+	ip_address := parts[1]
+	port_number := parts[2]
+	database_name := parts[3]
+
+	password := ""
+	
+	file, err_file := os.Open(filename)
+
+    if err_file != nil {
+        errors = append(errors, err_file)
+		return "", "", "", "", "", errors
+    }
+
+    defer file.Close()
+
+    scanner := bufio.NewScanner(file)
+
+    for scanner.Scan() {
+		currentText := scanner.Text()
+		if strings.HasPrefix(currentText, "password=") {
+			password = currentText[9:len(currentText)]
+		}
+    }
+
+    if file_errs := scanner.Err(); err != nil {
+        errors = append(errors, file_errs)
+    }
+
+	if password == "" {
+		errors = append(errors, fmt.Errorf("password not found for file: %s", filename))
 	}
 
 	if len(errors) > 0 {
-		return errors
+		return "", "", "", "", "", errors
 	}
-
-	return nil
-}
-
-func getUsername(label string) (string, []error) {
-	var errors []error
-	environment_variable := "HOLISTIC_DB_" + label + "_USERNAME"
-	username := os.Getenv(environment_variable)
-	if username == "" {
-		errors = append(errors, fmt.Errorf("%s environment variable not set", environment_variable))
-		return "", errors
-	}
-
-	username_errors := validateUsername(username)
-	if username_errors != nil {
-		return "", username_errors
-	}
-
-	return username, nil
+	
+	return ip_address, port_number, database_name, username, password, errors
 }

@@ -34,3 +34,13 @@ github.com/matehaxor03/holistic_db_client v0.0.21 h1:pgA8Q8kUwrrOcpqMsPxlmiCKvXK
 github.com/matehaxor03/holistic_db_client v0.0.21/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
 github.com/matehaxor03/holistic_db_client v0.0.22 h1:rBSLyn2MAfpjZJTcZQCxUBiTtIoLBNT3VkcIRjgg7VE=
 github.com/matehaxor03/holistic_db_client v0.0.22/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.23 h1:6oE7+ow9DS55+NB3a5pidctz2KkKrA+536/S7lfRCFw=
+github.com/matehaxor03/holistic_db_client v0.0.23/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.24 h1:YnbJVHETiPKGHS2+nCnyMw2b0F0eCIMTFAhB16P5u5Q=
+github.com/matehaxor03/holistic_db_client v0.0.24/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.25 h1:nuqZF3ibMi4DWTbYBSlx0K0Iaz0H8CTcXifRInnSMn8=
+github.com/matehaxor03/holistic_db_client v0.0.25/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.26 h1:oquP5MKK+iSZ5pWmp2sALj+syXwDnpWy1phqtllaXT8=
+github.com/matehaxor03/holistic_db_client v0.0.26/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
+github.com/matehaxor03/holistic_db_client v0.0.27 h1:BgNnXDAdPsQ2mZrALVB8dzQNLeNBsc3fpYqSwZzKxKk=
+github.com/matehaxor03/holistic_db_client v0.0.27/go.mod h1:hdquyETaRhUjHj6xD9sasdueb4sHYSyAcm+CiWKPuc0=
