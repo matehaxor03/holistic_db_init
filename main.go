@@ -162,6 +162,23 @@ func InitDB() []error {
 		return grant_read_db_user_errors
 	}
 
+	use_database_username_errors := client.UseDatabaseUsername(&migration_db_username)
+	if use_database_username_errors != nil {
+		return use_database_username_errors
+	}
+
+	database_migration_schema := class.Map {
+		"database_migration_id": class.Map {"type": "*int64", "primary_key": ""},
+		"current": class.Map {"type": "*int64", "default": -1},
+		"desired": class.Map {"type": "*int64", "default": 0},
+	}
+	
+
+	_, _, create_table_errors := database.CreateTable("DatabaseMigration", database_migration_schema, options)
+	if create_table_errors != nil {
+		return create_table_errors
+	}
+
 	/*
 	_, create_table_database_migration_err := db.Exec("CREATE TABLE IF NOT EXISTS DatabaseMigration (databaseMigrationId BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, current BIGINT NOT NULL DEFAULT -1, desired BIGINT NOT NULL DEFAULT 0, created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
 	if create_table_database_migration_err != nil {
