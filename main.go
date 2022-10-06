@@ -103,7 +103,10 @@ func InitDB() []error {
 	if create_migration_user_errs != nil {
 		return create_migration_user_errs
 	} else {
-		migration_db_user.UpdatePassword(migration_db_password)
+		update_password_errs := migration_db_user.UpdatePassword(migration_db_password)
+		if update_password_errs != nil {
+			return update_password_errs
+		}
 	}
 
 	_, _, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
@@ -115,7 +118,10 @@ func InitDB() []error {
 	if write_user_errs != nil {
 		return write_user_errs
 	} else {
-		write_db_user.UpdatePassword(write_db_password)
+		update_password_errs := write_db_user.UpdatePassword(write_db_password)
+		if update_password_errs != nil {
+			return update_password_errs
+		}
 	}
 
 	_, _, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", "*")
@@ -132,7 +138,10 @@ func InitDB() []error {
 	if read_user_errs != nil {
 		return read_user_errs
 	} else {
-		read_db_user.UpdatePassword(read_db_password)
+		update_password_errs := read_db_user.UpdatePassword(read_db_password)
+		if update_password_errs != nil {
+			return update_password_errs
+		}
 	}
 
 	_, _, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", "*")
