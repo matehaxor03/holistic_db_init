@@ -22,7 +22,7 @@ func main() {
 func InitDB() []error {
 	var errors []error
 
-	db_hostname, db_port_number, _, root_db_username, _, root_details_errors := getDetails("root")
+	db_hostname, db_port_number, _, root_db_username, root_db_password, root_details_errors := getDetails("root")
 	if root_details_errors != nil {
 		errors = append(errors, root_details_errors...)
 	}
@@ -55,7 +55,20 @@ func InitDB() []error {
 
 	for key, element := range usernamesGrouped {
 		if element > 1 {
-			errors = append(errors, fmt.Errorf("%s database username was detected %d times - root, migration, write and read database usernames must be all unqiue", key, element))
+			errors = append(errors, fmt.Errorf("database username: %s was detected %d times - root, migration, write and read database usernames must be all unqiue", key, element))
+		}
+	}
+
+	passwords := [...]string{root_db_password, migration_db_password, write_db_password, read_db_password}
+
+	passwordsGrouped := make(map[string]int)
+	for _, num := range passwords {
+		passwordsGrouped[num] = passwordsGrouped[num] + 1
+	}
+
+	for _, element := range passwordsGrouped {
+		if element > 1 {
+			errors = append(errors, fmt.Errorf("database password was detected %d times - root, migration, write and read database passwords must be all unqiue", element))
 		}
 	}
 
@@ -188,7 +201,7 @@ func InitDB() []error {
 	return nil
 }
 
-func getDetails(username string) (string, string, string, string, string, []error) {
+func getDetails(label string) (string, string, string, string, string, []error) {
 	var errors []error
 
 	files, err := ioutil.ReadDir("./")
@@ -209,20 +222,20 @@ func getDetails(username string) (string, string, string, string, string, []erro
 			continue
 		}
 
-		if !strings.HasSuffix(currentFileName, username + ".config") {
+		if !strings.HasSuffix(currentFileName, label + ".config") {
 			continue
 		}		
 		filename = currentFileName
     }
 
 	if filename == "" {
-		errors = append(errors, fmt.Errorf("database config for %s not found ust be in the format: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", username))
+		errors = append(errors, fmt.Errorf("database config for %s not found ust be in the format: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", label))
 		return "", "", "", "", "", errors
 	}
 
 	parts := strings.Split(filename, ":")
 	if len(parts) != 5 {
-		errors = append(errors, fmt.Errorf("database config for %s not found ust be in the format: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", username))
+		errors = append(errors, fmt.Errorf("database config for %s not found ust be in the format: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", label))
 		return "", "", "", "", "", errors
 	}
 
@@ -231,6 +244,7 @@ func getDetails(username string) (string, string, string, string, string, []erro
 	database_name := parts[3]
 
 	password := ""
+	username := ""
 	
 	file, err_file := os.Open(filename)
 
@@ -248,6 +262,10 @@ func getDetails(username string) (string, string, string, string, string, []erro
 		if strings.HasPrefix(currentText, "password=") {
 			password = currentText[9:len(currentText)]
 		}
+
+		if strings.HasPrefix(currentText, "user=") {
+			username = currentText[5:len(currentText)]
+		}
     }
 
     if file_errs := scanner.Err(); err != nil {
@@ -256,6 +274,10 @@ func getDetails(username string) (string, string, string, string, string, []erro
 
 	if password == "" {
 		errors = append(errors, fmt.Errorf("password not found for file: %s", filename))
+	}
+
+	if username == "" {
+		errors = append(errors, fmt.Errorf("user not found for file: %s", filename))
 	}
 
 	if len(errors) > 0 {
