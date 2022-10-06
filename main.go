@@ -99,10 +99,11 @@ func InitDB() []error {
 		return use_database_errors
 	}
 
-	localhost_IP := "127.0.0.1"
-	migration_db_user, _, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &localhost_IP, options)
+	migration_db_user, _, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname, options)
 	if create_migration_user_errs != nil {
 		return create_migration_user_errs
+	} else {
+		migration_db_user.UpdatePassword(migration_db_password)
 	}
 
 	_, _, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
@@ -110,9 +111,11 @@ func InitDB() []error {
 		return grant_migration_db_user_errors
 	}
 
-	write_db_user, _, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &localhost_IP, options)
+	write_db_user, _, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &db_hostname, options)
 	if write_user_errs != nil {
 		return write_user_errs
+	} else {
+		write_db_user.UpdatePassword(write_db_password)
 	}
 
 	_, _, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", "*")
@@ -125,9 +128,11 @@ func InitDB() []error {
 		return grant_write_db_user_errors2
 	}
 
-	read_db_user, _, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &localhost_IP, options)
+	read_db_user, _, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &db_hostname, options)
 	if read_user_errs != nil {
 		return read_user_errs
+	} else {
+		read_db_user.UpdatePassword(read_db_password)
 	}
 
 	_, _, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", "*")
@@ -247,6 +252,6 @@ func getDetails(username string) (string, string, string, string, string, []erro
 	if len(errors) > 0 {
 		return "", "", "", "", "", errors
 	}
-	
+
 	return ip_address, port_number, database_name, username, password, errors
 }
