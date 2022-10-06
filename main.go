@@ -55,7 +55,7 @@ func InitDB() []error {
 
 	for key, element := range usernamesGrouped {
 		if element > 1 {
-			errors = append(errors, fmt.Errorf("database username: %s was detected %d times - root, migration, write and read database usernames must be all unqiue", key, element))
+			errors = append(errors, fmt.Errorf("database username: %s was detected %d times - root, holistic_migration, holistic_write and holistic_read database usernames must be all unqiue", key, element))
 		}
 	}
 
@@ -68,7 +68,7 @@ func InitDB() []error {
 
 	for _, element := range passwordsGrouped {
 		if element > 1 {
-			errors = append(errors, fmt.Errorf("database password was detected %d times - root, migration, write and read database passwords must be all unqiue", element))
+			errors = append(errors, fmt.Errorf("database password was detected %d times - root, holistic_migration, holistic_write and holistic_read database passwords must be all unqiue", element))
 		}
 	}
 
