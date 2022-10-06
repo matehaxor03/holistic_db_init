@@ -27,17 +27,17 @@ func InitDB() []error {
 		errors = append(errors, root_details_errors...)
 	}
 	
-	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getDetails("migration")
+	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getDetails("holistic_migration")
 	if migration_details_errors != nil {
 		errors = append(errors, migration_details_errors...)
 	}
 
-	_, _, _, write_db_username, write_db_password, write_details_errors := getDetails("write")
+	_, _, _, write_db_username, write_db_password, write_details_errors := getDetails("holistic_write")
 	if write_details_errors != nil {
 		errors = append(errors, write_details_errors...)
 	}
 
-	_, _, _, read_db_username, read_db_password, read_details_errors := getDetails("read")
+	_, _, _, read_db_username, read_db_password, read_details_errors := getDetails("holistic_read")
 	if read_details_errors != nil {
 		errors = append(errors, read_details_errors...)
 	}
