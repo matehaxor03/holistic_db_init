@@ -80,7 +80,7 @@ func InitDB() []error {
 	client, client_errors := class.NewClient(host, &root_db_username, nil)
 
 	encoding := "utf8"
-	collate := "utf8_general_ci"
+	collate := "utf8mb4_0900_ai_ci"
 	database_create_options := class.NewDatabaseCreateOptions(&encoding, &collate)
 	
 	options := make(map[string]map[string][][]string)
