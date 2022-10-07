@@ -112,9 +112,6 @@ func InitDB() []error {
 		return use_database_errors
 	}
 
-	database.SetClient(client)
-
-
 	fmt.Println("creating migration database user...")
 	migration_db_user, _, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname, options)
 	if create_migration_user_errs != nil {
@@ -183,7 +180,7 @@ func InitDB() []error {
 
 	database_migration_schema := class.Map {
 		"[table_name]": class.Map {"type": "*string", "value": "DatabaseMigration"},
-		"database_migration_id": class.Map {"type": "*int64", "primary_key": ""},
+		"database_migration_id": class.Map {"type": "*int64", "unsigned": true, "auto_increment":true, "primary_key": true},
 		"current": class.Map {"type": "*int64", "default": -1},
 		"desired": class.Map {"type": "*int64", "default": 0},
 	}
