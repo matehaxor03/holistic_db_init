@@ -100,43 +100,49 @@ func InitDB() []error {
 		return errors
 	}
 	
-	database, result, database_creation_errs := client.CreateDatabase(&db_name, database_create_options, options)
+	fmt.Println("creating database...")
+	database, _, database_creation_errs := client.CreateDatabase(&db_name, database_create_options, options)
 	if database_creation_errs != nil {
-		errors = append(errors, database_creation_errs...)
-		fmt.Println(fmt.Errorf("%s", *result))
+		errors = append(errors, database_creation_errs...)		
 		return errors
 	}
-	
+
 	use_database_errors := client.UseDatabase(database)
 	if use_database_errors != nil {
 		return use_database_errors
 	}
 
+	fmt.Println("creating migration database user...")
 	migration_db_user, _, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname, options)
 	if create_migration_user_errs != nil {
 		return create_migration_user_errs
 	} else {
+		fmt.Println("updating migration database user password...")
 		update_password_errs := migration_db_user.UpdatePassword(migration_db_password)
 		if update_password_errs != nil {
 			return update_password_errs
 		}
 	}
 
+	fmt.Println("granting permissions to migration database user...")
 	_, _, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
 	if grant_migration_db_user_errors != nil {
 		return grant_migration_db_user_errors
 	}
 
+	fmt.Println("creating write database user...")
 	write_db_user, _, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &db_hostname, options)
 	if write_user_errs != nil {
 		return write_user_errs
 	} else {
+		fmt.Println("updating write database user password...")
 		update_password_errs := write_db_user.UpdatePassword(write_db_password)
 		if update_password_errs != nil {
 			return update_password_errs
 		}
 	}
 
+	fmt.Println("granting permissions to write database user...")
 	_, _, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", "*")
 	if grant_write_db_user_errors != nil {
 		return grant_write_db_user_errors
@@ -147,16 +153,19 @@ func InitDB() []error {
 		return grant_write_db_user_errors2
 	}
 
+	fmt.Println("creating read database user...")
 	read_db_user, _, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &db_hostname, options)
 	if read_user_errs != nil {
 		return read_user_errs
 	} else {
+		fmt.Println("updating read database user password...")
 		update_password_errs := read_db_user.UpdatePassword(read_db_password)
 		if update_password_errs != nil {
 			return update_password_errs
 		}
 	}
 
+	fmt.Println("granting permissions to read database user...")
 	_, _, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", "*")
 	if grant_read_db_user_errors != nil {
 		return grant_read_db_user_errors
@@ -167,14 +176,19 @@ func InitDB() []error {
 		return use_database_username_errors
 	}
 
+
+	database.SetClient(client)
+
 	database_migration_schema := class.Map {
+		"[table_name]": class.Map {"type": "*string", "value": "DatabaseMigration"},
 		"database_migration_id": class.Map {"type": "*int64", "primary_key": ""},
 		"current": class.Map {"type": "*int64", "default": -1},
 		"desired": class.Map {"type": "*int64", "default": 0},
 	}
 	
 
-	_, _, create_table_errors := database.CreateTable("DatabaseMigration", database_migration_schema, options)
+	fmt.Println("creating table database migration...")
+	_, _, create_table_errors := database.CreateTable(database_migration_schema, options)
 	if create_table_errors != nil {
 		return create_table_errors
 	}
