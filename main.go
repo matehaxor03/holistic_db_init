@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"bufio"
+	"strconv"
 	class "github.com/matehaxor03/holistic_db_client/class"
 )
 
@@ -180,7 +181,7 @@ func InitDB() []error {
 
 	database_migration_schema := class.Map {
 		"[table_name]": class.Map {"type": "*string", "value": "DatabaseMigration"},
-		"database_migration_id": class.Map {"type": "*int64", "unsigned": true, "auto_increment":true, "primary_key": true},
+		"database_migration_id": class.Map {"type": "*int64", "unsigned": true, "auto_increment": true, "primary_key": true},
 		"current": class.Map {"type": "*int64", "default": -1},
 		"desired": class.Map {"type": "*int64", "default": 0},
 	}
@@ -202,42 +203,13 @@ func InitDB() []error {
 		return nil
 	}
 
-	/*
-	_, create_table_database_migration_err := db.Exec("CREATE TABLE IF NOT EXISTS DatabaseMigration (databaseMigrationId BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, current BIGINT NOT NULL DEFAULT -1, desired BIGINT NOT NULL DEFAULT 0, created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
-	if create_table_database_migration_err != nil {
-		fmt.Println("error creating database_migration table")
-		errors = append(errors, create_table_database_migration_err)
-		return errors
+	fmt.Println("creating database migration table record...")
+	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(class.Map{})
+	if inserted_record_errors != nil {
+		return inserted_record_errors
 	}
+	fmt.Println(fmt.Sprintf("created recrod with primary key: %s", strconv.FormatUint(*(inserted_record.GetUInt64("database_migration_id")), 10)))
 
-	db_results, count_err := db.Query("SELECT COUNT(*) FROM DatabaseMigration")
-	if count_err != nil {
-		fmt.Println("error fetching count of records for DatabaseMigration")
-		errors = append(errors, count_err)
-		return errors
-	}
-
-	defer db_results.Close()
-	var count int
-
-	for db_results.Next() {
-		if err := db_results.Scan(&count); err != nil {
-			errors = append(errors, err)
-			return errors
-		}
-	}
-
-	if count > 0 {
-		return nil
-	}
-
-	_, insert_record_database_migration_err := db.Exec("INSERT INTO DatabaseMigration () VALUES ()")
-	if insert_record_database_migration_err != nil {
-		fmt.Println("error inserting record into database_migration")
-		errors = append(errors, insert_record_database_migration_err)
-		return errors
-	}
-	*/
 	return nil
 }
 
