@@ -187,9 +187,19 @@ func InitDB() []error {
 	
 
 	fmt.Println("creating table database migration...")
-	_, _, create_table_errors := database.CreateTable(database_migration_schema, options)
+	data_migration_table, _, create_table_errors := database.CreateTable(database_migration_schema, options)
 	if create_table_errors != nil {
 		return create_table_errors
+	}
+
+	data_migration_table_record_count, data_migration_table_record_count_errors := data_migration_table.Count()
+	if data_migration_table_record_count_errors != nil {
+		return data_migration_table_record_count_errors
+	}
+
+
+	if *data_migration_table_record_count > 0 {
+		return nil
 	}
 
 	/*
