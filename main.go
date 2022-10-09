@@ -208,7 +208,7 @@ func InitDB() []error {
 	if inserted_record_errors != nil {
 		return inserted_record_errors
 	}
-	fmt.Println(fmt.Sprintf("created recrod with primary key: %s", strconv.FormatUint(*(inserted_record.GetUInt64("database_migration_id")), 10)))
+	fmt.Println(fmt.Sprintf("created record with primary key: %s", strconv.FormatUint(*(inserted_record.GetUInt64("database_migration_id")), 10)))
 
 	return nil
 }
