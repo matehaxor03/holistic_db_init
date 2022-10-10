@@ -180,8 +180,8 @@ func InitDB() []error {
 
 
 	database_migration_schema := class.Map {
-		"[table_name]": class.Map {"type": "*string", "value": "DatabaseMigration"},
-		"database_migration_id": class.Map {"type": "*uint64", "auto_increment": true, "primary_key": true},
+		"table_name": class.Map {"type": "*string", "value": "DatabaseMigration"},
+		"database_migration_id": class.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
 		"current": class.Map {"type": "*int64", "default": -1},
 		"desired": class.Map {"type": "*int64", "default": 0},
 	}
@@ -208,7 +208,7 @@ func InitDB() []error {
 	if inserted_record_errors != nil {
 		return inserted_record_errors
 	}
-	fmt.Println(fmt.Sprintf("created record with primary key: %s", strconv.FormatUint(*(inserted_record.GetUInt64("database_migration_id")), 10)))
+	fmt.Println(fmt.Sprintf("created record with primary key: %s", strconv.FormatUint(*(inserted_record.GetData().GetUInt64("database_migration_id")), 10)))
 
 	return nil
 }
