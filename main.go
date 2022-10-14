@@ -195,7 +195,6 @@ func InitDB() []error {
 		return data_migration_table_record_count_errors
 	}
 
-
 	if *data_migration_table_record_count > 0 {
 		return nil
 	}
