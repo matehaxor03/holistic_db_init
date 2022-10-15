@@ -97,15 +97,24 @@ func InitDB() []error {
 	if len(errors) > 0 {
 		return errors
 	}
+
+	database_exists, database_exists_errors := client.DatabaseExists(&db_name)
+	if database_exists_errors != nil {
+		return database_exists_errors
+	}
 	
-	fmt.Println("creating database...")
-	database, database_creation_errs := client.CreateDatabase(&db_name, database_create_options, options)
-	if database_creation_errs != nil {
-		errors = append(errors, database_creation_errs...)		
-		return errors
+	if !(*database_exists) {
+		fmt.Println("creating database...")
+		_, database_creation_errs := client.CreateDatabase(&db_name, database_create_options)
+		if database_creation_errs != nil {
+			errors = append(errors, database_creation_errs...)		
+			return errors
+		}
+	} else {
+		fmt.Println("database already exists...")
 	}
 
-	use_database_errors := client.UseDatabase(database)
+	database, use_database_errors := client.UseDatabaseByName(db_name)
 	if use_database_errors != nil {
 		return use_database_errors
 	}
@@ -177,7 +186,7 @@ func InitDB() []error {
 
 
 	database_migration_schema := class.Map {
-		"table_name": class.Map {"type": "*string", "value": "DatabaseMigration"},
+		"[table_name]": class.Map {"type": "*string", "value": "DatabaseMigration"},
 		"database_migration_id": class.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
 		"current": class.Map {"type": "*int64", "default": -1},
 		"desired": class.Map {"type": "*int64", "default": 0},
