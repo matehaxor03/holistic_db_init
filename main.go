@@ -98,14 +98,14 @@ func InitDB() []error {
 		return errors
 	}
 
-	database_exists, database_exists_errors := client.DatabaseExists(&db_name)
+	database_exists, database_exists_errors := client.DatabaseExists(db_name)
 	if database_exists_errors != nil {
 		return database_exists_errors
 	}
 	
 	if !(*database_exists) {
 		fmt.Println("creating database...")
-		_, database_creation_errs := client.CreateDatabase(&db_name, database_create_options)
+		_, database_creation_errs := client.CreateDatabase(db_name, database_create_options)
 		if database_creation_errs != nil {
 			errors = append(errors, database_creation_errs...)		
 			return errors
@@ -178,7 +178,7 @@ func InitDB() []error {
 		return grant_read_db_user_errors
 	}
 
-	use_database_username_errors := client.UseDatabaseUsername(&migration_db_username)
+	use_database_username_errors := client.UseDatabaseUsername(migration_db_username)
 	if use_database_username_errors != nil {
 		return use_database_username_errors
 	}
