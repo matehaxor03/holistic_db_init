@@ -193,22 +193,38 @@ func InitDB() []error {
 	}
 	
 
-	fmt.Println("creating table database migration...")
-	data_migration_table, create_table_errors := database.CreateTable(database_migration_schema, options)
-	if create_table_errors != nil {
-		return create_table_errors
+	data_migration_table_exists, data_migration_table_exists_errors := database.TableExists("DatabaseMigration")
+	if data_migration_table_exists_errors != nil {
+		return data_migration_table_exists_errors
 	}
 
+	if !(*data_migration_table_exists) {
+		fmt.Println("creating table database migration...")
+		_, create_table_errors := database.CreateTable(database_migration_schema)
+		if create_table_errors != nil {
+			return create_table_errors
+		}
+	} else {
+		fmt.Println("table database migration already exists...")
+	}
+
+	data_migration_table, data_migration_table_errors := database.GetTable("DatabaseMigration")
+
+	if data_migration_table_errors != nil {
+		return data_migration_table_errors
+	}
+	
 	data_migration_table_record_count, data_migration_table_record_count_errors := data_migration_table.Count()
 	if data_migration_table_record_count_errors != nil {
 		return data_migration_table_record_count_errors
 	}
 
 	if *data_migration_table_record_count > 0 {
+		fmt.Println("database migration record already exists...")
 		return nil
 	}
 
-	fmt.Println("creating database migration table record...")
+	fmt.Println("creating database migration record...")
 	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(class.Map{})
 	if inserted_record_errors != nil {
 		return inserted_record_errors
@@ -219,6 +235,6 @@ func InitDB() []error {
 		return inserted_record_value_errors
 	}
 
-	fmt.Println(fmt.Sprintf("created record with primary key: %s", strconv.FormatUint(*inserted_record_value, 10)))
+	fmt.Println(fmt.Sprintf("created database migration record with primary key: %s", strconv.FormatUint(*inserted_record_value, 10)))
 	return nil
 }
