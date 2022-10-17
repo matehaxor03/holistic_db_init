@@ -185,9 +185,7 @@ func InitDB() []error {
 
 
 
-	database_migration_schema := class.Map {
-		"[table_name]": class.Map {"type": "*string", "value": "DatabaseMigration"},
-		"database_migration_id": class.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
+	database_migration_schema := class.Map {"database_migration_id": class.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
 		"current": class.Map {"type": "*int64", "default": -1},
 		"desired": class.Map {"type": "*int64", "default": 0},
 	}
@@ -200,7 +198,7 @@ func InitDB() []error {
 
 	if !(*data_migration_table_exists) {
 		fmt.Println("creating table database migration...")
-		_, create_table_errors := database.CreateTable(database_migration_schema)
+		_, create_table_errors := database.CreateTable("DatabaseMigration", database_migration_schema)
 		if create_table_errors != nil {
 			return create_table_errors
 		}
