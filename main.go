@@ -111,7 +111,7 @@ func InitDB() []error {
 			return errors
 		}
 	} else {
-		fmt.Println("database already exists...")
+		fmt.Println("(skip) database already exists...")
 	}
 
 	database, use_database_errors := client.UseDatabaseByName(db_name)
@@ -122,17 +122,31 @@ func InitDB() []error {
 	database_filter := db_name
 	table_filter := "*"
 
-	fmt.Println("creating migration database user...")
-	migration_db_user, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname, options)
-	if create_migration_user_errs != nil {
-		return create_migration_user_errs
-	} else {
-		fmt.Println("updating migration database user password...")
-		update_password_errs := migration_db_user.UpdatePassword(migration_db_password)
-		if update_password_errs != nil {
-			return update_password_errs
-		}
+	migration_user_exists, migration_user_exists_errors := client.UserExists(migration_db_username)
+	if migration_user_exists_errors != nil {
+		return migration_user_exists_errors
 	}
+
+	if *migration_user_exists {
+		fmt.Println("creating migration database user...")
+		migration_db_user, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname)
+		if create_migration_user_errs != nil {
+			return create_migration_user_errs
+		} else {
+			fmt.Println("updating migration database user password...")
+			update_password_errs := migration_db_user.UpdatePassword(migration_db_password)
+			if update_password_errs != nil {
+				return update_password_errs
+			}
+		}
+	} else {
+		fmt.Println("(skip) migration database user already exists...")
+	}
+	migration_db_user, migration_db_user_errors := client.GetUser(migration_db_username)
+	if migration_db_user_errors != nil {
+		return migration_db_user_errors
+	}
+	
 
 	fmt.Println("granting permissions to migration database user...")
 	_, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", &database_filter, &table_filter)
@@ -141,7 +155,7 @@ func InitDB() []error {
 	}
 
 	fmt.Println("creating write database user...")
-	write_db_user, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &db_hostname, options)
+	write_db_user, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &db_hostname)
 	if write_user_errs != nil {
 		return write_user_errs
 	} else {
@@ -164,7 +178,7 @@ func InitDB() []error {
 	}
 
 	fmt.Println("creating read database user...")
-	read_db_user, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &db_hostname, options)
+	read_db_user, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &db_hostname)
 	if read_user_errs != nil {
 		return read_user_errs
 	} else {
@@ -206,7 +220,7 @@ func InitDB() []error {
 			return create_table_errors
 		}
 	} else {
-		fmt.Println("table database migration already exists...")
+		fmt.Println("(skip) table database migration already exists...")
 	}
 
 	data_migration_table, data_migration_table_errors := database.GetTable("DatabaseMigration")
@@ -221,7 +235,7 @@ func InitDB() []error {
 	}
 
 	if *data_migration_table_record_count > 0 {
-		fmt.Println("database migration record already exists...")
+		fmt.Println("(skip) database migration record already exists...")
 		return nil
 	}
 
