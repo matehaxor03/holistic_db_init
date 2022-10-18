@@ -119,6 +119,9 @@ func InitDB() []error {
 		return use_database_errors
 	}
 
+	database_filter := db_name
+	table_filter := "*"
+
 	fmt.Println("creating migration database user...")
 	migration_db_user, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname, options)
 	if create_migration_user_errs != nil {
@@ -132,7 +135,7 @@ func InitDB() []error {
 	}
 
 	fmt.Println("granting permissions to migration database user...")
-	_, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", "*")
+	_, grant_migration_db_user_errors := client.Grant(migration_db_user, "ALL", &database_filter, &table_filter)
 	if grant_migration_db_user_errors != nil {
 		return grant_migration_db_user_errors
 	}
@@ -150,12 +153,12 @@ func InitDB() []error {
 	}
 
 	fmt.Println("granting permissions to write database user...")
-	_, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", "*")
+	_, grant_write_db_user_errors := client.Grant(write_db_user, "INSERT", &database_filter, &table_filter)
 	if grant_write_db_user_errors != nil {
 		return grant_write_db_user_errors
 	}
 
-	_, grant_write_db_user_errors2 := client.Grant(write_db_user, "UPDATE", "*")
+	_, grant_write_db_user_errors2 := client.Grant(write_db_user, "UPDATE", &database_filter, &table_filter)
 	if grant_write_db_user_errors2 != nil {
 		return grant_write_db_user_errors2
 	}
@@ -173,7 +176,7 @@ func InitDB() []error {
 	}
 
 	fmt.Println("granting permissions to read database user...")
-	_, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", "*")
+	_, grant_read_db_user_errors := client.Grant(read_db_user, "SELECT", &database_filter, &table_filter)
 	if grant_read_db_user_errors != nil {
 		return grant_read_db_user_errors
 	}
