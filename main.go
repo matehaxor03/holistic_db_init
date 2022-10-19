@@ -126,8 +126,7 @@ func InitDB() []error {
 	if migration_user_exists_errors != nil {
 		return migration_user_exists_errors
 	}
-
-	if *migration_user_exists {
+	if !(*migration_user_exists) {
 		fmt.Println("creating migration database user...")
 		migration_db_user, create_migration_user_errs := client.CreateUser(&migration_db_username, &migration_db_password, &db_hostname)
 		if create_migration_user_errs != nil {
@@ -154,16 +153,28 @@ func InitDB() []error {
 		return grant_migration_db_user_errors
 	}
 
-	fmt.Println("creating write database user...")
-	write_db_user, write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &db_hostname)
-	if write_user_errs != nil {
-		return write_user_errs
-	} else {
-		fmt.Println("updating write database user password...")
-		update_password_errs := write_db_user.UpdatePassword(write_db_password)
-		if update_password_errs != nil {
-			return update_password_errs
+	write_user_exists, write_user_exists_errors := client.UserExists(write_db_username)
+	if write_user_exists_errors != nil {
+		return write_user_exists_errors
+	}
+	if !(*write_user_exists) {
+		fmt.Println("creating write database user...")
+		write_db_user, create_write_user_errs := client.CreateUser(&write_db_username, &write_db_password, &db_hostname)
+		if create_write_user_errs != nil {
+			return create_write_user_errs
+		} else {
+			fmt.Println("updating write database user password...")
+			update_password_errs := write_db_user.UpdatePassword(write_db_password)
+			if update_password_errs != nil {
+				return update_password_errs
+			}
 		}
+	} else {
+		fmt.Println("(skip) write database user already exists...")
+	}
+	write_db_user, write_db_user_errors := client.GetUser(write_db_username)
+	if write_db_user_errors != nil {
+		return write_db_user_errors
 	}
 
 	fmt.Println("granting permissions to write database user...")
@@ -177,16 +188,28 @@ func InitDB() []error {
 		return grant_write_db_user_errors2
 	}
 
-	fmt.Println("creating read database user...")
-	read_db_user, read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &db_hostname)
-	if read_user_errs != nil {
-		return read_user_errs
-	} else {
-		fmt.Println("updating read database user password...")
-		update_password_errs := read_db_user.UpdatePassword(read_db_password)
-		if update_password_errs != nil {
-			return update_password_errs
+	read_user_exists, read_user_exists_errors := client.UserExists(read_db_username)
+	if read_user_exists_errors != nil {
+		return read_user_exists_errors
+	}
+	if !(*read_user_exists) {
+		fmt.Println("creating read database user...")
+		read_db_user, create_read_user_errs := client.CreateUser(&read_db_username, &read_db_password, &db_hostname)
+		if create_read_user_errs != nil {
+			return create_read_user_errs
+		} else {
+			fmt.Println("updating read database user password...")
+			update_password_errs := read_db_user.UpdatePassword(read_db_password)
+			if update_password_errs != nil {
+				return update_password_errs
+			}
 		}
+	} else {
+		fmt.Println("(skip) read database user already exists...")
+	}
+	read_db_user, read_db_user_errors := client.GetUser(read_db_username)
+	if read_db_user_errors != nil {
+		return read_db_user_errors
 	}
 
 	fmt.Println("granting permissions to read database user...")
