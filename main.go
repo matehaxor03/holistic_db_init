@@ -244,8 +244,8 @@ func InitDB() []error {
 
 		database_migration_schema := class.Map {"database_migration_id": class.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
 			"title": class.Map {"type": "string", "default": "", "max_length":255 },
-			"current": class.Map {"type": "int64", "default": -1},
-			"desired": class.Map {"type": "int64", "default": 0},
+			"current": class.Map {"type": "int64", "default": int64(-1)},
+			"desired": class.Map {"type": "int64", "default": int64(0)},
 		}
 
 		fmt.Println("creating table database migration...")
