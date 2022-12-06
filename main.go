@@ -95,13 +95,17 @@ func InitDB() []error {
 		return errors
 	}
 
+	disable_global_logs_errors := client.GlobalGeneralLogDisable()
+	if disable_global_logs_errors != nil {
+		return disable_global_logs_errors
+	}
+
 	database_exists, database_exists_errors := client.DatabaseExists(db_name)
 	if database_exists_errors != nil {
 		return database_exists_errors
 	}
 	
 	if !(*database_exists) {
-
 		character_set := class.GET_CHARACTER_SET_UTF8MB4()
 		collate := class.GET_COLLATE_UTF8MB4_0900_AI_CI()
 
