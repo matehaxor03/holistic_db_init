@@ -7,6 +7,7 @@ import (
 	"strings"
 	"bufio"
 	"io/ioutil"
+	json "github.com/matehaxor03/holistic_json/json"
 	class "github.com/matehaxor03/holistic_db_client/class"
 )
 
@@ -98,6 +99,11 @@ func InitDB() []error {
 	disable_global_logs_errors := client.GlobalGeneralLogDisable()
 	if disable_global_logs_errors != nil {
 		return disable_global_logs_errors
+	}
+
+	set_utc_time_errors := client.GlobalSetTimeZoneUTC()
+	if set_utc_time_errors != nil {
+		return set_utc_time_errors
 	}
 
 	database_exists, database_exists_errors := client.DatabaseExists(db_name)
@@ -246,10 +252,10 @@ func InitDB() []error {
 
 	if !(*data_migration_table_exists) {
 
-		database_migration_schema := class.Map {"database_migration_id": class.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
-			"title": class.Map {"type": "string", "default": "", "max_length":255 },
-			"current": class.Map {"type": "int64", "default": int64(-1)},
-			"desired": class.Map {"type": "int64", "default": int64(0)},
+		database_migration_schema := json.Map {"database_migration_id": json.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
+			"title": json.Map {"type": "string", "default": "", "max_length":255 },
+			"current": json.Map {"type": "int64", "default": int64(-1)},
+			"desired": json.Map {"type": "int64", "default": int64(0)},
 		}
 
 		fmt.Println("creating table database migration...")
@@ -278,7 +284,7 @@ func InitDB() []error {
 	}
 
 	fmt.Println("creating database migration record...")
-	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(class.Map{"title":"config"})
+	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(json.Map{"title":"config"})
 	if inserted_record_errors != nil {
 		return inserted_record_errors
 	}
