@@ -106,6 +106,11 @@ func InitDB() []error {
 		return set_utc_time_errors
 	}
 
+	set_sql_mode_errors := client.GlobalSetSQLMode()
+	if set_sql_mode_errors != nil {
+		return set_sql_mode_errors
+	}
+
 	database_exists, database_exists_errors := client.DatabaseExists(db_name)
 	if database_exists_errors != nil {
 		return database_exists_errors
