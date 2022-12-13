@@ -258,7 +258,6 @@ func InitDB() []error {
 	if !(*data_migration_table_exists) {
 
 		database_migration_schema := json.Map {"database_migration_id": json.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
-			"title": json.Map {"type": "string", "default": "", "max_length":255 },
 			"current": json.Map {"type": "int64", "default": int64(-1)},
 			"desired": json.Map {"type": "int64", "default": int64(0)},
 		}
@@ -289,7 +288,7 @@ func InitDB() []error {
 	}
 
 	fmt.Println("creating database migration record...")
-	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(json.Map{"title":"config"})
+	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(json.Map{"name":"config"})
 	if inserted_record_errors != nil {
 		return inserted_record_errors
 	}
