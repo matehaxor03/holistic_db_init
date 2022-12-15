@@ -214,6 +214,12 @@ func InitDB() []error {
 		return grant_write_db_user_errors2
 	}
 
+	_, grant_write_db_user_errors3 := client.Grant(*write_db_user, "SELECT", &database_filter, &table_filter)
+	if grant_write_db_user_errors3 != nil {
+		return grant_write_db_user_errors3
+	}
+
+
 	read_user_exists, read_user_exists_errors := client.UserExists(read_db_username)
 	if read_user_exists_errors != nil {
 		return read_user_exists_errors
