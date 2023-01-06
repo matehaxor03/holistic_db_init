@@ -8,7 +8,9 @@ import (
 	"bufio"
 	"io/ioutil"
 	json "github.com/matehaxor03/holistic_json/json"
-	class "github.com/matehaxor03/holistic_db_client/class"
+	db_client "github.com/matehaxor03/holistic_db_client/db_client"
+	dao "github.com/matehaxor03/holistic_db_client/dao"
+	common "github.com/matehaxor03/holistic_common/common"
 )
 
 func main() {
@@ -24,22 +26,22 @@ func main() {
 func InitDB() []error {
 	var errors []error
 
-	db_hostname, db_port_number, _, root_db_username, root_db_password, root_details_errors := getCredentialDetails("root")
+	db_hostname, db_port_number, _, root_db_username, root_db_password, root_details_errors := getCredentialDetails("holistic", "root")
 	if root_details_errors != nil {
 		errors = append(errors, root_details_errors...)
 	}
 	
-	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getCredentialDetails("holistic_migration")
+	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getCredentialDetails("holistic", "holistic_migration")
 	if migration_details_errors != nil {
 		errors = append(errors, migration_details_errors...)
 	}
 
-	_, _, _, write_db_username, write_db_password, write_details_errors := getCredentialDetails("holistic_write")
+	_, _, _, write_db_username, write_db_password, write_details_errors := getCredentialDetails("holistic", "holistic_write")
 	if write_details_errors != nil {
 		errors = append(errors, write_details_errors...)
 	}
 
-	_, _, _, read_db_username, read_db_password, read_details_errors := getCredentialDetails("holistic_read")
+	_, _, _, read_db_username, read_db_password, read_details_errors := getCredentialDetails("holistic", "holistic_read")
 	if read_details_errors != nil {
 		errors = append(errors, read_details_errors...)
 	}
@@ -78,7 +80,7 @@ func InitDB() []error {
 		return errors
 	}
 
-	client_manager, client_manager_errors := class.NewClientManager()
+	client_manager, client_manager_errors := db_client.NewClientManager()
 	if client_manager_errors != nil {
 		errors = append(errors, client_manager_errors...)
 	}
@@ -87,7 +89,7 @@ func InitDB() []error {
 		return errors
 	}
 
-	client, client_errors := client_manager.GetClient("holistic_db_config:" + db_hostname + ":" + db_port_number + ":" + db_name + ":" + root_db_username)
+	client, client_errors := client_manager.GetClient("holistic_db_config#" + db_hostname + "#" + db_port_number + "#" + db_name + "#" + root_db_username)
 	if client_errors != nil {
 		errors = append(errors, client_errors...)
 	}
@@ -96,29 +98,14 @@ func InitDB() []error {
 		return errors
 	}
 
-	disable_global_logs_errors := client.GlobalGeneralLogDisable()
-	if disable_global_logs_errors != nil {
-		return disable_global_logs_errors
-	}
-
-	set_utc_time_errors := client.GlobalSetTimeZoneUTC()
-	if set_utc_time_errors != nil {
-		return set_utc_time_errors
-	}
-
-	set_sql_mode_errors := client.GlobalSetSQLMode()
-	if set_sql_mode_errors != nil {
-		return set_sql_mode_errors
-	}
-
 	database_exists, database_exists_errors := client.DatabaseExists(db_name)
 	if database_exists_errors != nil {
 		return database_exists_errors
 	}
 	
 	if !(*database_exists) {
-		character_set := class.GET_CHARACTER_SET_UTF8MB4()
-		collate := class.GET_COLLATE_UTF8MB4_0900_AI_CI()
+		character_set := dao.GET_CHARACTER_SET_UTF8MB4()
+		collate := dao.GET_COLLATE_UTF8MB4_0900_AI_CI()
 
 		fmt.Println("creating database...")
 		_, database_creation_errs := client.CreateDatabase(db_name, &character_set, &collate)
@@ -140,6 +127,21 @@ func InitDB() []error {
 	if use_database_errors != nil {
 		fmt.Println("use database errors ...")
 		return use_database_errors
+	}
+
+	disable_global_logs_errors := database.GlobalGeneralLogDisable()
+	if disable_global_logs_errors != nil {
+		return disable_global_logs_errors
+	}
+
+	set_utc_time_errors := database.GlobalSetTimeZoneUTC()
+	if set_utc_time_errors != nil {
+		return set_utc_time_errors
+	}
+
+	set_sql_mode_errors := database.GlobalSetSQLMode()
+	if set_sql_mode_errors != nil {
+		return set_sql_mode_errors
 	}
 
 	database_filter := db_name
@@ -263,10 +265,25 @@ func InitDB() []error {
 
 	if !(*data_migration_table_exists) {
 
-		database_migration_schema := json.Map {"database_migration_id": json.Map {"type": "uint64", "auto_increment": true, "primary_key": true},
-			"current": json.Map {"type": "int64", "default": int64(-1)},
-			"desired": json.Map {"type": "int64", "default": int64(0)},
-		}
+		database_migration_schema := json.NewMapValue()
+
+		primary_key_column_schema := json.NewMapValue()
+		primary_key_column_schema.SetStringValue("type", "uint64")
+		primary_key_column_schema.SetBoolValue("auto_increment", true)
+		primary_key_column_schema.SetBoolValue("primary_key", true)
+
+		current_column_schema := json.NewMapValue()
+		current_column_schema.SetStringValue("type", "int64")
+		current_column_schema.SetInt64Value("default", int64(-1))
+
+		desired_column_schema := json.NewMapValue()
+		desired_column_schema.SetStringValue("type", "int64")
+		desired_column_schema.SetInt64Value("default", int64(0))
+
+		database_migration_schema.SetMapValue("database_migration_id", primary_key_column_schema)
+		database_migration_schema.SetMapValue("current", current_column_schema)
+		database_migration_schema.SetMapValue("desired", desired_column_schema)
+
 
 		fmt.Println("creating table database migration...")
 		_, create_table_errors := database.CreateTable("DatabaseMigration", database_migration_schema)
@@ -283,7 +300,7 @@ func InitDB() []error {
 		return data_migration_table_errors
 	}
 	
-	data_migration_table_record_count, data_migration_table_record_count_errors := data_migration_table.Count()
+	data_migration_table_record_count, data_migration_table_record_count_errors := data_migration_table.Count(nil, nil, nil, nil, nil)
 	if data_migration_table_record_count_errors != nil {
 		return data_migration_table_record_count_errors
 	}
@@ -294,7 +311,8 @@ func InitDB() []error {
 	}
 
 	fmt.Println("creating database migration record...")
-	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(json.Map{"name":"config"})
+	default_record := json.NewMapValue()
+	inserted_record, inserted_record_errors := data_migration_table.CreateRecord(default_record)
 	if inserted_record_errors != nil {
 		return inserted_record_errors
 	}
@@ -309,10 +327,20 @@ func InitDB() []error {
 }
 
 
-func getCredentialDetails(label string) (string, string, string, string, string, []error) {
+func getCredentialDetails(database string, label string) (string, string, string, string, string, []error) {
 	var errors []error
 
-	files, err := ioutil.ReadDir("./")
+	directory_parts := common.GetDataDirectory()
+	directory := "/" 
+	for index, directory_part := range directory_parts {
+		directory += directory_part
+		if index < len(directory_parts) - 1 {
+			directory += "/"
+		}
+	}
+
+
+	files, err := ioutil.ReadDir(directory)
 	if err != nil {
 		errors = append(errors, err)
 		return "", "", "", "", "", errors
@@ -326,24 +354,24 @@ func getCredentialDetails(label string) (string, string, string, string, string,
 
 		currentFileName := file.Name()
 
-		if !strings.HasPrefix(currentFileName, "holistic_db_config:") {
+		if !strings.HasPrefix(currentFileName, "holistic_db_config#") {
 			continue
 		}
 
-		if !strings.HasSuffix(currentFileName, label+".config") {
+		if !strings.HasSuffix(currentFileName,  "#" + database  + "#" + label + ".config") {
 			continue
 		}
 		filename = currentFileName
 	}
 
 	if filename == "" {
-		errors = append(errors, fmt.Errorf("database config for %s not found filename is empty: holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", label))
+		errors = append(errors, fmt.Errorf("database config for %s not found e.g holistic_db_config#127.0.0.1#3306#holistic#root.config", label))
 		return "", "", "", "", "", errors
 	}
 
-	parts := strings.Split(filename, ":")
+	parts := strings.Split(filename, "#")
 	if len(parts) != 5 {
-		errors = append(errors, fmt.Errorf("database config for %s not found filename is in wrong format and had parts: %s holistic_db_config|{database_ip_address}|{database_port_number}|{database_name}|{database_username}.config e.g holistic_db_config|127.0.0.1|3306|holistic|root.config", label, parts))
+		errors = append(errors, fmt.Errorf("database config for %s found in wrong format had %d parts: %s with e.g holistic_db_config#127.0.0.1#3306#holistic#root.config", label, len(parts), parts))
 		return "", "", "", "", "", errors
 	}
 
