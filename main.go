@@ -8,9 +8,9 @@ import (
 	"bufio"
 	"io/ioutil"
 	json "github.com/matehaxor03/holistic_json/json"
-	db_client "github.com/matehaxor03/holistic_db_client/db_client"
 	dao "github.com/matehaxor03/holistic_db_client/dao"
 	common "github.com/matehaxor03/holistic_common/common"
+	validation_constants "github.com/matehaxor03/holistic_db_client/validation_constants"
 )
 
 func main() {
@@ -80,7 +80,7 @@ func InitDB() []error {
 		return errors
 	}
 
-	client_manager, client_manager_errors := db_client.NewClientManager()
+	client_manager, client_manager_errors := dao.NewClientManager()
 	if client_manager_errors != nil {
 		errors = append(errors, client_manager_errors...)
 	}
@@ -89,7 +89,7 @@ func InitDB() []error {
 		return errors
 	}
 
-	client, client_errors := client_manager.GetClient("holistic_db_config#" + db_hostname + "#" + db_port_number + "#" + db_name + "#" + root_db_username)
+	client, client_errors := client_manager.GetClient(db_hostname, db_port_number, db_name, root_db_username)
 	if client_errors != nil {
 		errors = append(errors, client_errors...)
 	}
@@ -103,9 +103,9 @@ func InitDB() []error {
 		return database_exists_errors
 	}
 	
-	if !(*database_exists) {
-		character_set := dao.GET_CHARACTER_SET_UTF8MB4()
-		collate := dao.GET_COLLATE_UTF8MB4_0900_AI_CI()
+	if !database_exists {
+		character_set := validation_constants.GET_CHARACTER_SET_UTF8MB4()
+		collate := validation_constants.GET_COLLATE_UTF8MB4_0900_AI_CI()
 
 		fmt.Println("creating database...")
 		_, database_creation_errs := client.CreateDatabase(db_name, &character_set, &collate)
@@ -117,10 +117,10 @@ func InitDB() []error {
 		fmt.Println("(skip) database already exists...")
 	}
 
-	database, database_errors := client.GetDatabase()
-	if database_errors != nil {
-		fmt.Println("get database errors ...")
-		return database_errors
+	database := client.GetDatabase()
+	set_root_database_username_errors := database.SetDatabaseUsername(root_db_username)
+	if set_root_database_username_errors != nil {
+		return set_root_database_username_errors
 	}
 
 	use_database_errors := client.UseDatabase(*database)
@@ -146,14 +146,14 @@ func InitDB() []error {
 
 	database_filter := db_name
 	table_filter := "*"
-
+	
 	migration_user_exists, migration_user_exists_errors := client.UserExists(migration_db_username)
 	if migration_user_exists_errors != nil {
 		fmt.Println("migration user exists errors ...")
 		return migration_user_exists_errors
 	}
 
-	if !(*migration_user_exists) {
+	if !migration_user_exists {
 		fmt.Println("creating migration database user...")
 		migration_db_user, create_migration_user_errs := client.CreateUser(migration_db_username, migration_db_password, db_hostname)
 		if create_migration_user_errs != nil {
@@ -168,7 +168,7 @@ func InitDB() []error {
 	} else {
 		fmt.Println("(skip) migration database user already exists...")
 	}
-	
+
 	migration_db_user, migration_db_user_errors := client.GetUser(migration_db_username)
 	if migration_db_user_errors != nil {
 		fmt.Println("get migration user exists errors ...")
@@ -181,80 +181,86 @@ func InitDB() []error {
 		return grant_migration_db_user_errors
 	}
 
-	write_user_exists, write_user_exists_errors := client.UserExists(write_db_username)
-	if write_user_exists_errors != nil {
-		return write_user_exists_errors
-	}
-	if !(*write_user_exists) {
-		fmt.Println("creating write database user...")
-		write_db_user, create_write_user_errs := client.CreateUser(write_db_username, write_db_password, db_hostname)
-		if create_write_user_errs != nil {
-			return create_write_user_errs
-		} else {
-			fmt.Println("updating write database user password...")
-			update_password_errs := write_db_user.UpdatePassword(write_db_password)
-			if update_password_errs != nil {
-				return update_password_errs
-			}
+	user_count := 0
+	for user_count < 100 {
+		fmt.Println(user_count)
+		write_user_exists, write_user_exists_errors := client.UserExists(write_db_username + fmt.Sprintf("%d", user_count))
+		if write_user_exists_errors != nil {
+			return write_user_exists_errors
 		}
-	} else {
-		fmt.Println("(skip) write database user already exists...")
-	}
-	write_db_user, write_db_user_errors := client.GetUser(write_db_username)
-	if write_db_user_errors != nil {
-		return write_db_user_errors
-	}
-
-	fmt.Println("granting permissions to write database user...")
-	_, grant_write_db_user_errors := client.Grant(*write_db_user, "INSERT", &database_filter, &table_filter)
-	if grant_write_db_user_errors != nil {
-		return grant_write_db_user_errors
-	}
-
-	_, grant_write_db_user_errors2 := client.Grant(*write_db_user, "UPDATE", &database_filter, &table_filter)
-	if grant_write_db_user_errors2 != nil {
-		return grant_write_db_user_errors2
-	}
-
-	_, grant_write_db_user_errors3 := client.Grant(*write_db_user, "SELECT", &database_filter, &table_filter)
-	if grant_write_db_user_errors3 != nil {
-		return grant_write_db_user_errors3
-	}
-
-
-	read_user_exists, read_user_exists_errors := client.UserExists(read_db_username)
-	if read_user_exists_errors != nil {
-		return read_user_exists_errors
-	}
-	if !(*read_user_exists) {
-		fmt.Println("creating read database user...")
-		read_db_user, create_read_user_errs := client.CreateUser(read_db_username, read_db_password, db_hostname)
-		if create_read_user_errs != nil {
-			return create_read_user_errs
-		} else {
-			fmt.Println("updating read database user password...")
-			update_password_errs := read_db_user.UpdatePassword(read_db_password)
-			if update_password_errs != nil {
-				return update_password_errs
+		if !write_user_exists {
+			fmt.Println("creating write database user...")
+			write_db_user, create_write_user_errs := client.CreateUser(write_db_username + fmt.Sprintf("%d", user_count), write_db_password, db_hostname)
+			if create_write_user_errs != nil {
+				return create_write_user_errs
+			} else {
+				fmt.Println("updating write database user password...")
+				update_password_errs := write_db_user.UpdatePassword(write_db_password)
+				if update_password_errs != nil {
+					return update_password_errs
+				}
 			}
+		} else {
+			fmt.Println("(skip) write database user already exists...")
 		}
-	} else {
-		fmt.Println("(skip) read database user already exists...")
-	}
-	read_db_user, read_db_user_errors := client.GetUser(read_db_username)
-	if read_db_user_errors != nil {
-		return read_db_user_errors
-	}
+		write_db_user, write_db_user_errors := client.GetUser(write_db_username + fmt.Sprintf("%d", user_count))
+		if write_db_user_errors != nil {
+			return write_db_user_errors
+		}
 
-	fmt.Println("granting permissions to read database user...")
-	_, grant_read_db_user_errors := client.Grant(*read_db_user, "SELECT", &database_filter, &table_filter)
-	if grant_read_db_user_errors != nil {
-		return grant_read_db_user_errors
-	}
+		fmt.Println("granting permissions to write database user...")
+		_, grant_write_db_user_errors := client.Grant(*write_db_user, "INSERT", &database_filter, &table_filter)
+		if grant_write_db_user_errors != nil {
+			return grant_write_db_user_errors
+		}
 
-	use_database_username_errors := client.UseDatabaseUsername(migration_db_username)
-	if use_database_username_errors != nil {
-		return use_database_username_errors
+		_, grant_write_db_user_errors2 := client.Grant(*write_db_user, "UPDATE", &database_filter, &table_filter)
+		if grant_write_db_user_errors2 != nil {
+			return grant_write_db_user_errors2
+		}
+
+		_, grant_write_db_user_errors3 := client.Grant(*write_db_user, "SELECT", &database_filter, &table_filter)
+		if grant_write_db_user_errors3 != nil {
+			return grant_write_db_user_errors3
+		}
+
+
+		read_user_exists, read_user_exists_errors := client.UserExists(read_db_username + fmt.Sprintf("%d", user_count))
+		if read_user_exists_errors != nil {
+			return read_user_exists_errors
+		}
+		if !read_user_exists {
+			fmt.Println("creating read database user...")
+			read_db_user, create_read_user_errs := client.CreateUser(read_db_username + fmt.Sprintf("%d", user_count), read_db_password, db_hostname)
+			if create_read_user_errs != nil {
+				return create_read_user_errs
+			} else {
+				fmt.Println("updating read database user password...")
+				update_password_errs := read_db_user.UpdatePassword(read_db_password)
+				if update_password_errs != nil {
+					return update_password_errs
+				}
+			}
+		} else {
+			fmt.Println("(skip) read database user already exists...")
+		}
+		read_db_user, read_db_user_errors := client.GetUser(read_db_username + fmt.Sprintf("%d", user_count))
+		if read_db_user_errors != nil {
+			return read_db_user_errors
+		}
+
+		fmt.Println("granting permissions to read database user...")
+		_, grant_read_db_user_errors := client.Grant(*read_db_user, "SELECT", &database_filter, &table_filter)
+		if grant_read_db_user_errors != nil {
+			return grant_read_db_user_errors
+		}
+		user_count++
+	}
+	
+
+	set_database_username_errors := client.SetDatabaseUsername(migration_db_username)
+	if set_database_username_errors != nil {
+		return set_database_username_errors
 	}
 	
 
@@ -263,7 +269,7 @@ func InitDB() []error {
 		return data_migration_table_exists_errors
 	}
 
-	if !(*data_migration_table_exists) {
+	if !data_migration_table_exists {
 
 		database_migration_schema := json.NewMapValue()
 
