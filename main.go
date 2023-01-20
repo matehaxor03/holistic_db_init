@@ -10,7 +10,7 @@ import (
 	json "github.com/matehaxor03/holistic_json/json"
 	dao "github.com/matehaxor03/holistic_db_client/dao"
 	common "github.com/matehaxor03/holistic_common/common"
-	validation_constants "github.com/matehaxor03/holistic_db_client/validation_constants"
+	validation_constants "github.com/matehaxor03/holistic_validator/validation_constants"
 )
 
 func main() {
@@ -24,6 +24,15 @@ func main() {
 }
 
 func InitDB() []error {
+	directory_parts := common.GetDataDirectory()
+	directory := "/" 
+	for index, directory_part := range directory_parts {
+		directory += directory_part
+		if index < len(directory_parts) - 1 {
+			directory += "/"
+		}
+	}
+
 	var errors []error
 
 	db_hostname, db_port_number, _, root_db_username, root_db_password, root_details_errors := getCredentialDetails("holistic", "root")
@@ -31,17 +40,17 @@ func InitDB() []error {
 		errors = append(errors, root_details_errors...)
 	}
 	
-	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getCredentialDetails("holistic", "holistic_migration")
+	_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getCredentialDetails("holistic", "holistic_mig")
 	if migration_details_errors != nil {
 		errors = append(errors, migration_details_errors...)
 	}
 
-	_, _, _, write_db_username, write_db_password, write_details_errors := getCredentialDetails("holistic", "holistic_write")
+	_, _, _, write_db_username, write_db_password, write_details_errors := getCredentialDetails("holistic", "holistic_w")
 	if write_details_errors != nil {
 		errors = append(errors, write_details_errors...)
 	}
 
-	_, _, _, read_db_username, read_db_password, read_details_errors := getCredentialDetails("holistic", "holistic_read")
+	_, _, _, read_db_username, read_db_password, read_details_errors := getCredentialDetails("holistic", "holistic_r")
 	if read_details_errors != nil {
 		errors = append(errors, read_details_errors...)
 	}
@@ -181,6 +190,11 @@ func InitDB() []error {
 		return grant_migration_db_user_errors
 	}
 
+	migration_errors := WriteCredentialsFile(directory, db_hostname, db_port_number, db_name, migration_db_username, migration_db_password, -1)
+	if migration_errors != nil {
+		return migration_errors
+	}
+
 	user_count := 0
 	for user_count < 100 {
 		fmt.Println(user_count)
@@ -224,6 +238,10 @@ func InitDB() []error {
 			return grant_write_db_user_errors3
 		}
 
+		write_errors := WriteCredentialsFile(directory, db_hostname, db_port_number, db_name, write_db_username, write_db_password, user_count)
+		if write_errors != nil {
+			return write_errors
+		}
 
 		read_user_exists, read_user_exists_errors := client.UserExists(read_db_username + fmt.Sprintf("%d", user_count))
 		if read_user_exists_errors != nil {
@@ -254,6 +272,12 @@ func InitDB() []error {
 		if grant_read_db_user_errors != nil {
 			return grant_read_db_user_errors
 		}
+		
+		read_errors := WriteCredentialsFile(directory, db_hostname, db_port_number, db_name, read_db_username, read_db_password, user_count)
+		if read_errors != nil {
+			return read_errors
+		}
+		
 		user_count++
 	}
 	
@@ -419,4 +443,29 @@ func getCredentialDetails(database string, label string) (string, string, string
 	}
 
 	return ip_address, port_number, database_name, username, password, errors
+}
+
+
+func WriteCredentialsFile(directory string, host_name string, port_number string, database_name string, username string, password string, user_count int) []error {
+	var errors []error
+	user_count_as_string := ""
+	if user_count != -1 {
+		user_count_as_string = fmt.Sprintf("%d", user_count)
+	}
+    created_file, created_file_error := os.Create(directory + "/holistic_db_config#" + host_name  + "#" + port_number + "#" + database_name + "#"  + username + user_count_as_string + ".config")
+
+    if created_file_error != nil {
+		errors = append(errors, created_file_error)
+        return errors
+    }
+
+    defer created_file.Close()
+    _, write_to_file_error := created_file.WriteString("[client]\n" + "user=" + (username + user_count_as_string) + "\npassword=" + password + "\n[mysqld]\nskip-log-bin")
+
+    if write_to_file_error != nil {
+		errors = append(errors, write_to_file_error)
+        return errors
+    }
+
+    return nil
 }
