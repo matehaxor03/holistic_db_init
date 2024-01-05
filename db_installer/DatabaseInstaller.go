@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
-	"bufio"
-	"io/ioutil"
 	json "github.com/matehaxor03/holistic_json/json"
 	dao "github.com/matehaxor03/holistic_db_client/dao"
 	common "github.com/matehaxor03/holistic_common/common"
 	validation_constants "github.com/matehaxor03/holistic_validator/validation_constants"
+	validate "github.com/matehaxor03/holistic_validator/validate"	
 )
 
 type DatabaseInstaller struct {
@@ -18,93 +16,32 @@ type DatabaseInstaller struct {
 	Install func() ([]error)
 }
 
-func NewDatabaseInstaller() (*DatabaseInstaller, []error) {
-	getCredentialDetails := func(database string, label string) (string, string, string, string, string, []error) {
-		var errors []error
+func NewDatabaseInstaller(database_host_name string, database_port_number string, database_name string, database_root_user string, database_root_password string) (*DatabaseInstaller, []error) {
+	verify := validate.NewValidator()
+	db_host_name := database_host_name
+	db_port_number := database_port_number
+	db_name := database_name
+	database_username := database_root_user
+	database_password := database_root_password
 	
-		directory_parts := common.GetDataDirectory()
-		directory := "/" 
-		for index, directory_part := range directory_parts {
-			directory += directory_part
-			if index < len(directory_parts) - 1 {
-				directory += "/"
-			}
-		}
-	
-	
-		files, err := ioutil.ReadDir(directory)
-		if err != nil {
-			errors = append(errors, err)
-			return "", "", "", "", "", errors
-		}
-	
-		filename := ""
-		for _, file := range files {
-			if file.IsDir() {
-				continue
-			}
-	
-			currentFileName := file.Name()
-	
-			if !strings.HasPrefix(currentFileName, "holistic_db_config#") {
-				continue
-			}
-	
-			if !strings.HasSuffix(currentFileName,  "#" + database  + "#" + label + ".config") {
-				continue
-			}
-			filename = currentFileName
-		}
-	
-		if filename == "" {
-			errors = append(errors, fmt.Errorf("database config for %s not found e.g holistic_db_config#127.0.0.1#3306#holistic#root.config", label))
-			return "", "", "", "", "", errors
-		}
-	
-		parts := strings.Split(filename, "#")
-		if len(parts) != 5 {
-			errors = append(errors, fmt.Errorf("database config for %s found in wrong format had %d parts: %s with e.g holistic_db_config#127.0.0.1#3306#holistic#root.config", label, len(parts), parts))
-			return "", "", "", "", "", errors
-		}
-	
-		ip_address := parts[1]
-		port_number := parts[2]
-		database_name := parts[3]
-		username := parts[4]
-		password := ""
-		username = ""
-	
-		file, err_file := os.Open(filename)
-		if err_file != nil {
-			errors = append(errors, err_file)
-			return "", "", "", "", "", errors
-		}
-	
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			currentText := scanner.Text()
-			if strings.HasPrefix(currentText, "password=") {
-				password = currentText[9:len(currentText)]
-			}
-			if strings.HasPrefix(currentText, "user=") {
-				username = currentText[5:len(currentText)]
-			}
-		}
-		if file_errs := scanner.Err(); err != nil {
-			errors = append(errors, file_errs)
-		}
-		if password == "" {
-			errors = append(errors, fmt.Errorf("password not found for file: %s", filename))
-		}
-		if username == "" {
-			errors = append(errors, fmt.Errorf("user not found for file: %s", filename))
-		}
-		if len(errors) > 0 {
-			return "", "", "", "", "", errors
-		}
-	
-		return ip_address, port_number, database_name, username, password, errors
+	getDatabaseHostName := func() string {
+		return db_host_name
+	}
+
+	getDatabasePortNumber := func() string {
+		return db_port_number
+	}
+
+	getDatabaseName := func() string {
+		return db_name
+	}
+
+	getDatabaseRootUsername := func() string {
+		return database_username
+	}
+
+	getDatabaseRootPassword := func() string {
+		return database_password
 	}
 
 	writeCredentialsFile := func(directory string, host_name string, port_number string, database_name string, username string, password string, user_count int) []error {
@@ -143,25 +80,33 @@ func NewDatabaseInstaller() (*DatabaseInstaller, []error) {
 		}
 
 		var errors []error
+		db_hostname := getDatabaseHostName()
+		db_port_number := getDatabasePortNumber()
+		db_name := getDatabaseName()
+		root_db_username := getDatabaseRootUsername()
+		root_db_password := getDatabaseRootPassword()
+		migration_db_username := common.CONSTANT_HOLISTIC_DATABASE_MIGRATION_USERNAME()
+		migration_db_password := common.GenerateGuid()
 
-		db_hostname, db_port_number, _, root_db_username, root_db_password, root_details_errors := getCredentialDetails("holistic", "root")
-		if root_details_errors != nil {
-			errors = append(errors, root_details_errors...)
-		}
-		
-		_, _, db_name, migration_db_username, migration_db_password, migration_details_errors := getCredentialDetails("holistic", "holistic_mig")
-		if migration_details_errors != nil {
-			errors = append(errors, migration_details_errors...)
+		write_db_username := common.CONSTANT_HOLISTIC_DATABASE_WRITE_USERNAME()
+		write_db_password := common.GenerateGuid()
+	
+		read_db_username := common.CONSTANT_HOLISTIC_DATABASE_READ_USERNAME()
+		read_db_password := common.GenerateGuid()
+
+		root_errors := writeCredentialsFile(directory, db_hostname, db_port_number, "", root_db_username, root_db_password, -1)
+		if root_errors != nil {
+			return root_errors
 		}
 
-		_, _, _, write_db_username, write_db_password, write_details_errors := getCredentialDetails("holistic", "holistic_w")
-		if write_details_errors != nil {
-			errors = append(errors, write_details_errors...)
+		root_errors2 := writeCredentialsFile(directory, db_hostname, db_port_number, db_name, root_db_username, root_db_password, -1)
+		if root_errors2 != nil {
+			return root_errors2
 		}
 
-		_, _, _, read_db_username, read_db_password, read_details_errors := getCredentialDetails("holistic", "holistic_r")
-		if read_details_errors != nil {
-			errors = append(errors, read_details_errors...)
+		root_errors3 := writeCredentialsFile(directory, db_hostname, db_port_number, "mysql", root_db_username, root_db_password, -1)
+		if root_errors3 != nil {
+			return root_errors3
 		}
 
 		if len(errors) > 0 {
@@ -178,19 +123,6 @@ func NewDatabaseInstaller() (*DatabaseInstaller, []error) {
 		for key, element := range usernamesGrouped {
 			if element > 1 {
 				errors = append(errors, fmt.Errorf("database username: %s was detected %d times - root, holistic_migration, holistic_write and holistic_read database usernames must be all unqiue", key, element))
-			}
-		}
-
-		passwords := [...]string{root_db_password, migration_db_password, write_db_password, read_db_password}
-
-		passwordsGrouped := make(map[string]int)
-		for _, num := range passwords {
-			passwordsGrouped[num] = passwordsGrouped[num] + 1
-		}
-
-		for _, element := range passwordsGrouped {
-			if element > 1 {
-				errors = append(errors, fmt.Errorf("database password was detected %d times - root, holistic_migration, holistic_write and holistic_read database passwords must be all unqiue", element))
 			}
 		}
 
@@ -467,6 +399,42 @@ func NewDatabaseInstaller() (*DatabaseInstaller, []error) {
 
 
 	validate := func() []error {
+		var errors []error
+		temp_database_hostname := getDatabaseHostName()
+		temp_database_port_number := getDatabasePortNumber()
+		temp_database_name := getDatabaseName()
+		temp_database_username := getDatabaseRootUsername()
+		temp_database_password := getDatabaseRootPassword()
+
+		database_host_name_errors := verify.ValidateDomainName(temp_database_hostname)
+		if database_host_name_errors != nil {
+			errors = append(errors, database_host_name_errors...)
+		}
+
+		database_port_number_errors := verify.ValidatePortNumber(temp_database_port_number)
+		if database_port_number_errors != nil {
+			errors = append(errors, database_port_number_errors...)
+		}
+
+		database_name_errors := verify.ValidateDatabaseName(temp_database_name)
+		if database_name_errors != nil {
+			errors = append(errors, database_name_errors...)
+		}
+
+		username_errors := verify.ValidateUsername(temp_database_username)
+		if username_errors != nil {
+			errors = append(errors, username_errors...)
+		}
+
+		password_errors := verify.ValidateBase64Encoding(temp_database_password)
+		if password_errors != nil {
+			errors = append(errors, password_errors...)
+		}
+
+		if errors != nil {
+			return errors
+		}
+
 		return nil
 	}
 
