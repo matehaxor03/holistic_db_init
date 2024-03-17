@@ -8,7 +8,7 @@ import (
 	dao "github.com/matehaxor03/holistic_db_client/dao"
 	common "github.com/matehaxor03/holistic_common/common"
 	validation_constants "github.com/matehaxor03/holistic_validator/validation_constants"
-	validate "github.com/matehaxor03/holistic_validator/validate"	
+	validate "github.com/matehaxor03/holistic_validator/validate"
 )
 
 type DatabaseInstaller struct {
@@ -16,7 +16,7 @@ type DatabaseInstaller struct {
 	Install func() ([]error)
 }
 
-func NewDatabaseInstaller(database_host_name string, database_port_number string, database_name string, database_root_user string, database_root_password string) (*DatabaseInstaller, []error) {
+func NewDatabaseInstaller(database_host_name string, database_port_number string, database_name string, database_root_user string, database_root_password string, write_host_users []string, read_host_users []string, migration_host_users []string) (*DatabaseInstaller, []error) {
 	verify := validate.NewValidator()
 	db_host_name := database_host_name
 	db_port_number := database_port_number

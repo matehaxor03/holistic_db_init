@@ -1,10 +1,10 @@
-github.com/matehaxor03/holistic_common v0.0.68 h1:KxN8D2/ojYuLFx+9AEUFTE4ElRTfe6udtECyAhgrIiA=
-github.com/matehaxor03/holistic_common v0.0.68/go.mod h1:Fduzjeq/XqKGCdJsBedOS7DzfwQOqTGJtS8T2zQjeCY=
+github.com/matehaxor03/holistic_common v0.0.72 h1:kvUpzowj7CLZuuQhefYfLzF/d68gpwofw3QVlpLmCVw=
+github.com/matehaxor03/holistic_common v0.0.72/go.mod h1:Fduzjeq/XqKGCdJsBedOS7DzfwQOqTGJtS8T2zQjeCY=
 github.com/matehaxor03/holistic_db_client v0.0.555 h1:9OQg1onmDr5feG6RILV9GA2K88WrbyB5+Cqzenq17GE=
 github.com/matehaxor03/holistic_db_client v0.0.555/go.mod h1:TmKZl6L0Rl/bjXtfSLNjkufANfwYuPlwD6/HATFGIls=
-github.com/matehaxor03/holistic_host_client v0.0.2 h1:r97FFpONsTxMNUdQ0TIu/Z78OsgyxpqA3NEYUeaaO1Q=
-github.com/matehaxor03/holistic_host_client v0.0.2/go.mod h1:WzZKUlKbxcUnJYFGBg/0bMOmbrWC1iLzWCFcXGMbgDA=
+github.com/matehaxor03/holistic_host_client v0.0.66 h1:VNQa7daNvWpRyB9fZJ0qFISPHdV7I9yzjwKUa5sZkL4=
+github.com/matehaxor03/holistic_host_client v0.0.66/go.mod h1:UC5JUONGzYFZq3eBPxeqy6gDEnKLuX8Azg4GRov8G4s=
 github.com/matehaxor03/holistic_json v0.0.92 h1:PFA7RIuArnPVEaibkCMrs2Snw5zyHe28tErvpl7zOiA=
 github.com/matehaxor03/holistic_json v0.0.92/go.mod h1:8/5MdPf2xxxm8Z2dRw48k1KnaNbpS4HfN0awe1/xN+0=
-github.com/matehaxor03/holistic_validator v0.0.8 h1:yie1Nr5cfccDfKbY7sDFk1xBTyYY/QbX7vayf3dwg3I=
-github.com/matehaxor03/holistic_validator v0.0.8/go.mod h1:KaTczbHzyD+U1FgOlt91TO+kcVHe7kzPbbto3uSSwfs=
+github.com/matehaxor03/holistic_validator v0.0.9 h1:g5lEPx79lLKxKjaa8pPzRwxWdTfxsRoNPetnCfaalO8=
+github.com/matehaxor03/holistic_validator v0.0.9/go.mod h1:KaTczbHzyD+U1FgOlt91TO+kcVHe7kzPbbto3uSSwfs=
