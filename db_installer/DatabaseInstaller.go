@@ -2,13 +2,13 @@ package db_installer
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	json "github.com/matehaxor03/holistic_json/json"
 	dao "github.com/matehaxor03/holistic_db_client/dao"
 	common "github.com/matehaxor03/holistic_common/common"
 	validation_constants "github.com/matehaxor03/holistic_validator/validation_constants"
 	validate "github.com/matehaxor03/holistic_validator/validate"
+	host_client "github.com/matehaxor03/holistic_host_client/host_client"
 )
 
 type DatabaseInstaller struct {
@@ -23,6 +23,11 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 	db_name := database_name
 	database_username := database_root_user
 	database_password := database_root_password
+
+	host_client_instance, host_client_errors := host_client.NewHostClient()
+	if host_client_errors != nil {
+		return nil, host_client_errors
+	}
 	
 	getDatabaseHostName := func() string {
 		return db_host_name
@@ -44,27 +49,47 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		return database_password
 	}
 
-	writeCredentialsFile := func(directory string, host_name string, port_number string, database_name string, username string, password string, user_count int) []error {
-		var errors []error
+	writeCredentialsFile := func(host_usernames []string, host_name string, port_number string, database_name string, username string, password string, user_count int) []error {
 		user_count_as_string := ""
 		if user_count != -1 {
 			user_count_as_string = fmt.Sprintf("%d", user_count)
 		}
-		created_file, created_file_error := os.Create(directory + "/holistic_db_config#" + host_name  + "#" + port_number + "#" + database_name + "#"  + username + user_count_as_string + ".config")
-	
-		if created_file_error != nil {
-			errors = append(errors, created_file_error)
-			return errors
+
+		for _, host_username := range host_usernames {
+			host_user, host_user_errors := host_client_instance.User(host_username)
+			if host_user_errors != nil {
+				return host_user_errors
+			}
+
+			host_home_directory, host_home_directory_errors := host_user.GetHomeDirectoryAbsoluteDirectory()
+			if host_home_directory_errors != nil {
+				return host_home_directory_errors
+			}	
+			
+			var db_creds_directory_path []string
+			db_creds_directory_path = append(db_creds_directory_path, host_home_directory.GetPath()...)
+			db_creds_directory_path = append(db_creds_directory_path, ".db")
+			
+			db_creds_directory, db_creds_directory_errors := host_client_instance.AbsoluteDirectory(db_creds_directory_path)
+			if db_creds_directory_errors != nil {
+				return db_creds_directory_errors
+			}
+
+			db_creds_directory_create_errors := db_creds_directory.CreateIfDoesNotExist()
+			if db_creds_directory_create_errors != nil {
+				return db_creds_directory_create_errors
+			}
+
+			db_creds_file, db_creds_file_errors := host_client_instance.AbsoluteFile(*db_creds_directory, "holistic_db_config#" + host_name  + "#" + port_number + "#" + database_name + "#"  + username + user_count_as_string + ".config")
+			if db_creds_file_errors != nil {
+				return db_creds_file_errors
+			}
+
+			db_creds_file_append_errors := db_creds_file.Append("[client]\n" + "user=" + (username + user_count_as_string) + "\npassword=" + password + "\n[mysqld]\nskip-log-bin")
+			if db_creds_file_append_errors != nil {
+				return db_creds_file_append_errors
+			}
 		}
-	
-		defer created_file.Close()
-		_, write_to_file_error := created_file.WriteString("[client]\n" + "user=" + (username + user_count_as_string) + "\npassword=" + password + "\n[mysqld]\nskip-log-bin")
-	
-		if write_to_file_error != nil {
-			errors = append(errors, write_to_file_error)
-			return errors
-		}
-	
 		return nil
 	}
 	
@@ -94,17 +119,22 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		read_db_username := common.CONSTANT_HOLISTIC_DATABASE_READ_USERNAME()
 		read_db_password := common.GenerateGuid()
 
-		root_errors := writeCredentialsFile(directory, db_hostname, db_port_number, "", root_db_username, root_db_password, -1)
+		var all_host_users []string
+		all_host_users = append(all_host_users, write_host_users...)
+		all_host_users = append(all_host_users, read_host_users...)
+		all_host_users = append(all_host_users, migration_host_users...)
+
+		root_errors := writeCredentialsFile(all_host_users, db_hostname, db_port_number, "", root_db_username, root_db_password, -1)
 		if root_errors != nil {
 			return root_errors
 		}
 
-		root_errors2 := writeCredentialsFile(directory, db_hostname, db_port_number, db_name, root_db_username, root_db_password, -1)
+		root_errors2 := writeCredentialsFile(all_host_users, db_hostname, db_port_number, db_name, root_db_username, root_db_password, -1)
 		if root_errors2 != nil {
 			return root_errors2
 		}
 
-		root_errors3 := writeCredentialsFile(directory, db_hostname, db_port_number, "mysql", root_db_username, root_db_password, -1)
+		root_errors3 := writeCredentialsFile(all_host_users, db_hostname, db_port_number, "mysql", root_db_username, root_db_password, -1)
 		if root_errors3 != nil {
 			return root_errors3
 		}
@@ -231,7 +261,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			return grant_migration_db_user_errors
 		}
 
-		migration_errors := writeCredentialsFile(directory, db_hostname, db_port_number, db_name, migration_db_username, migration_db_password, -1)
+		migration_errors := writeCredentialsFile(migration_host_users, db_hostname, db_port_number, db_name, migration_db_username, migration_db_password, -1)
 		if migration_errors != nil {
 			return migration_errors
 		}
@@ -279,7 +309,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 				return grant_write_db_user_errors3
 			}
 
-			write_errors := writeCredentialsFile(directory, db_hostname, db_port_number, db_name, write_db_username, write_db_password, user_count)
+			write_errors := writeCredentialsFile(write_host_users, db_hostname, db_port_number, db_name, write_db_username, write_db_password, user_count)
 			if write_errors != nil {
 				return write_errors
 			}
@@ -314,7 +344,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 				return grant_read_db_user_errors
 			}
 			
-			read_errors := writeCredentialsFile(directory, db_hostname, db_port_number, db_name, read_db_username, read_db_password, user_count)
+			read_errors := writeCredentialsFile(read_host_users, db_hostname, db_port_number, db_name, read_db_username, read_db_password, user_count)
 			if read_errors != nil {
 				return read_errors
 			}
