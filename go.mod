@@ -10,5 +10,5 @@ require (
 require (
 	github.com/matehaxor03/holistic_common v0.0.72
 	github.com/matehaxor03/holistic_host_client v0.0.66
-	github.com/matehaxor03/holistic_validator v0.0.9
+	github.com/matehaxor03/holistic_validator v0.0.10
 )
