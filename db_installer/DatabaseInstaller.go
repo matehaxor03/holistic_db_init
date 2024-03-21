@@ -50,6 +50,8 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 	}
 
 	writeCredentialsFile := func(host_usernames []string, host_name string, port_number string, database_name string, username string, password string, user_count int) []error {
+		var errors []error
+
 		user_count_as_string := ""
 		if user_count != -1 {
 			user_count_as_string = fmt.Sprintf("%d", user_count)
@@ -85,9 +87,32 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 				return db_creds_file_errors
 			}
 
+			remove_db_file_if_exists_errors := db_creds_file.RemoveIfExists()
+			if remove_db_file_if_exists_errors != nil {
+				return remove_db_file_if_exists_errors
+			}
+
+			create_file_errors := db_creds_file.Create()
+			if create_file_errors != nil {
+				return create_file_errors
+			}
+
 			db_creds_file_append_errors := db_creds_file.Append("[client]\n" + "user=" + (username + user_count_as_string) + "\npassword=" + password + "\n[mysqld]\nskip-log-bin")
 			if db_creds_file_append_errors != nil {
 				return db_creds_file_append_errors
+			}
+
+			user_primary_group, user_primary_group_errors := host_user.GetPrimaryGroup()
+			if user_primary_group_errors != nil {
+				return user_primary_group_errors
+			} else if user_primary_group == nil {
+				errors = append(errors, fmt.Errorf("primary group is nil"))
+				return errors
+			}
+
+			set_owner_errors := db_creds_file.SetOwner(*host_user, *user_primary_group)
+			if set_owner_errors != nil {
+				return set_owner_errors
 			}
 		}
 		return nil
