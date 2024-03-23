@@ -58,6 +58,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		}
 
 		for _, host_username := range host_usernames {
+			fmt.Println(host_username)
 			host_user, host_user_errors := host_client_instance.User(host_username)
 			if host_user_errors != nil {
 				return host_user_errors
