@@ -115,6 +115,11 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			if set_owner_errors != nil {
 				return set_owner_errors
 			}
+
+			set_directory_owner_errors := db_creds_directory.SetOwner(*host_user, *user_primary_group)
+			if set_directory_owner_errors != nil {
+				return set_directory_owner_errors
+			}
 		}
 		return nil
 	}
