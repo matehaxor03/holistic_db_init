@@ -3,17 +3,18 @@ package db_installer
 import (
 	"fmt"
 	"strconv"
-	json "github.com/matehaxor03/holistic_json/json"
-	dao "github.com/matehaxor03/holistic_db_client/dao"
+
 	common "github.com/matehaxor03/holistic_common/common"
-	validation_constants "github.com/matehaxor03/holistic_validator/validation_constants"
-	validate "github.com/matehaxor03/holistic_validator/validate"
+	dao "github.com/matehaxor03/holistic_db_client/dao"
 	host_client "github.com/matehaxor03/holistic_host_client/host_client"
+	json "github.com/matehaxor03/holistic_json/json"
+	validate "github.com/matehaxor03/holistic_validator/validate"
+	validation_constants "github.com/matehaxor03/holistic_validator/validation_constants"
 )
 
 type DatabaseInstaller struct {
 	Validate func() []error
-	Install func() ([]error)
+	Install  func() []error
 }
 
 func NewDatabaseInstaller(database_host_name string, database_port_number string, database_name string, database_root_user string, database_root_password string, write_host_users []string, read_host_users []string, migration_host_users []string) (*DatabaseInstaller, []error) {
@@ -28,7 +29,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 	if host_client_errors != nil {
 		return nil, host_client_errors
 	}
-	
+
 	getDatabaseHostName := func() string {
 		return db_host_name
 	}
@@ -67,12 +68,12 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			host_home_directory, host_home_directory_errors := host_user.GetHomeDirectoryAbsoluteDirectory()
 			if host_home_directory_errors != nil {
 				return host_home_directory_errors
-			}	
-			
+			}
+
 			var db_creds_directory_path []string
 			db_creds_directory_path = append(db_creds_directory_path, host_home_directory.GetPath()...)
 			db_creds_directory_path = append(db_creds_directory_path, ".db")
-			
+
 			db_creds_directory, db_creds_directory_errors := host_client_instance.AbsoluteDirectory(db_creds_directory_path)
 			if db_creds_directory_errors != nil {
 				return db_creds_directory_errors
@@ -83,7 +84,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 				return db_creds_directory_create_errors
 			}
 
-			db_creds_file, db_creds_file_errors := host_client_instance.AbsoluteFile(*db_creds_directory, "holistic_db_config#" + host_name  + "#" + port_number + "#" + database_name + "#"  + username + user_count_as_string + ".config")
+			db_creds_file, db_creds_file_errors := host_client_instance.AbsoluteFile(*db_creds_directory, "holistic_db_config#"+host_name+"#"+port_number+"#"+database_name+"#"+username+user_count_as_string+".config")
 			if db_creds_file_errors != nil {
 				return db_creds_file_errors
 			}
@@ -123,14 +124,13 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		}
 		return nil
 	}
-	
-	
-	install := func() ([]error) {
+
+	install := func() []error {
 		directory_parts := common.GetDataDirectory()
-		directory := "/" 
+		directory := "/"
 		for index, directory_part := range directory_parts {
 			directory += directory_part
-			if index < len(directory_parts) - 1 {
+			if index < len(directory_parts)-1 {
 				directory += "/"
 			}
 		}
@@ -146,7 +146,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 
 		write_db_username := common.CONSTANT_HOLISTIC_DATABASE_WRITE_USERNAME()
 		write_db_password := common.GenerateGuid()
-	
+
 		read_db_username := common.CONSTANT_HOLISTIC_DATABASE_READ_USERNAME()
 		read_db_password := common.GenerateGuid()
 
@@ -213,7 +213,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		if database_exists_errors != nil {
 			return database_exists_errors
 		}
-		
+
 		if !database_exists {
 			character_set := validation_constants.GET_CHARACTER_SET_UTF8MB4()
 			collate := validation_constants.GET_COLLATE_UTF8MB4_0900_AI_CI()
@@ -221,7 +221,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			fmt.Println("creating database...")
 			_, database_creation_errs := client.CreateDatabase(db_name, &character_set, &collate)
 			if database_creation_errs != nil {
-				errors = append(errors, database_creation_errs...)		
+				errors = append(errors, database_creation_errs...)
 				return errors
 			}
 		} else {
@@ -257,7 +257,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 
 		database_filter := db_name
 		table_filter := "*"
-		
+
 		migration_user_exists, migration_user_exists_errors := client.UserExists(migration_db_username)
 		if migration_user_exists_errors != nil {
 			fmt.Println("migration user exists errors ...")
@@ -299,26 +299,30 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 
 		user_count := 0
 		for user_count < 100 {
-			fmt.Println(user_count)
+			fmt.Println(".")
 			write_user_exists, write_user_exists_errors := client.UserExists(write_db_username + fmt.Sprintf("%d", user_count))
 			if write_user_exists_errors != nil {
 				return write_user_exists_errors
 			}
+
 			if !write_user_exists {
-				fmt.Println("creating write database user...")
-				write_db_user, create_write_user_errs := client.CreateUser(write_db_username + fmt.Sprintf("%d", user_count), write_db_password, db_hostname)
+				_, create_write_user_errs := client.CreateUser(write_db_username+fmt.Sprintf("%d", user_count), write_db_password, db_hostname)
 				if create_write_user_errs != nil {
 					return create_write_user_errs
-				} else {
-					fmt.Println("updating write database user password...")
-					update_password_errs := write_db_user.UpdatePassword(write_db_password)
-					if update_password_errs != nil {
-						return update_password_errs
-					}
 				}
 			} else {
-				fmt.Println("(skip) write database user already exists...")
+
+				write_db_user, create_write_user_errs := client.GetUser(write_db_username + fmt.Sprintf("%d", user_count))
+				if create_write_user_errs != nil {
+					return create_write_user_errs
+				}
+
+				update_password_errs := write_db_user.UpdatePassword(write_db_password)
+				if update_password_errs != nil {
+					return update_password_errs
+				}
 			}
+
 			write_db_user, write_db_user_errors := client.GetUser(write_db_username + fmt.Sprintf("%d", user_count))
 			if write_db_user_errors != nil {
 				return write_db_user_errors
@@ -351,7 +355,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			}
 			if !read_user_exists {
 				fmt.Println("creating read database user...")
-				read_db_user, create_read_user_errs := client.CreateUser(read_db_username + fmt.Sprintf("%d", user_count), read_db_password, db_hostname)
+				read_db_user, create_read_user_errs := client.CreateUser(read_db_username+fmt.Sprintf("%d", user_count), read_db_password, db_hostname)
 				if create_read_user_errs != nil {
 					return create_read_user_errs
 				} else {
@@ -374,21 +378,19 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			if grant_read_db_user_errors != nil {
 				return grant_read_db_user_errors
 			}
-			
+
 			read_errors := writeCredentialsFile(read_host_users, db_hostname, db_port_number, db_name, read_db_username, read_db_password, user_count)
 			if read_errors != nil {
 				return read_errors
 			}
-			
+
 			user_count++
 		}
-		
 
 		set_database_username_errors := client.SetDatabaseUsername(migration_db_username)
 		if set_database_username_errors != nil {
 			return set_database_username_errors
 		}
-		
 
 		data_migration_table_exists, data_migration_table_exists_errors := database.TableExists("DatabaseMigration")
 		if data_migration_table_exists_errors != nil {
@@ -416,7 +418,6 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			database_migration_schema.SetMapValue("current", current_column_schema)
 			database_migration_schema.SetMapValue("desired", desired_column_schema)
 
-
 			fmt.Println("creating table database migration...")
 			_, create_table_errors := database.CreateTable("DatabaseMigration", database_migration_schema)
 			if create_table_errors != nil {
@@ -431,7 +432,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		if data_migration_table_errors != nil {
 			return data_migration_table_errors
 		}
-		
+
 		data_migration_table_record_count, data_migration_table_record_count_errors := data_migration_table.Count(nil, nil, nil, nil, nil)
 		if data_migration_table_record_count_errors != nil {
 			return data_migration_table_record_count_errors
@@ -457,7 +458,6 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		fmt.Println(fmt.Sprintf("created database migration record with primary key: %s", strconv.FormatUint(*inserted_record_value, 10)))
 		return nil
 	}
-
 
 	validate := func() []error {
 		var errors []error
@@ -503,7 +503,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		Validate: func() []error {
 			return validate()
 		},
-		Install: func() ([]error) {
+		Install: func() []error {
 			return install()
 		},
 	}
@@ -516,4 +516,3 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 
 	return &x, nil
 }
-
