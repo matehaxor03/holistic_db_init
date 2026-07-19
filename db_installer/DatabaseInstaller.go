@@ -2,7 +2,6 @@ package db_installer
 
 import (
 	"fmt"
-	"strconv"
 
 	common "github.com/matehaxor03/holistic_common/common"
 	dao "github.com/matehaxor03/holistic_db_client/dao"
@@ -260,33 +259,31 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 
 		migration_user_exists, migration_user_exists_errors := client.UserExists(migration_db_username)
 		if migration_user_exists_errors != nil {
-			fmt.Println("migration user exists errors ...")
 			return migration_user_exists_errors
 		}
 
 		if !migration_user_exists {
-			fmt.Println("creating migration database user...")
-			migration_db_user, create_migration_user_errs := client.CreateUser(migration_db_username, migration_db_password, db_hostname)
+			_, create_migration_user_errs := client.CreateUser(migration_db_username, migration_db_password, db_hostname)
 			if create_migration_user_errs != nil {
 				return create_migration_user_errs
-			} else {
-				fmt.Println("updating migration database user password...")
-				update_password_errs := migration_db_user.UpdatePassword(migration_db_password)
-				if update_password_errs != nil {
-					return update_password_errs
-				}
 			}
 		} else {
-			fmt.Println("(skip) migration database user already exists...")
+			migration_db_user, migration_db_user_errors := client.GetUser(migration_db_username)
+			if migration_db_user_errors != nil {
+				return migration_db_user_errors
+			}
+
+			update_password_errs := migration_db_user.UpdatePassword(migration_db_password)
+			if update_password_errs != nil {
+				return update_password_errs
+			}
 		}
 
 		migration_db_user, migration_db_user_errors := client.GetUser(migration_db_username)
 		if migration_db_user_errors != nil {
-			fmt.Println("get migration user exists errors ...")
 			return migration_db_user_errors
 		}
 
-		fmt.Println("granting permissions to migration database user...")
 		_, grant_migration_db_user_errors := client.Grant(*migration_db_user, "ALL", &database_filter, &table_filter)
 		if grant_migration_db_user_errors != nil {
 			return grant_migration_db_user_errors
@@ -299,7 +296,7 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 
 		user_count := 0
 		for user_count < 100 {
-			fmt.Println(".")
+			fmt.Print(".")
 			write_user_exists, write_user_exists_errors := client.UserExists(write_db_username + fmt.Sprintf("%d", user_count))
 			if write_user_exists_errors != nil {
 				return write_user_exists_errors
@@ -328,7 +325,6 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 				return write_db_user_errors
 			}
 
-			fmt.Println("granting permissions to write database user...")
 			_, grant_write_db_user_errors := client.Grant(*write_db_user, "INSERT", &database_filter, &table_filter)
 			if grant_write_db_user_errors != nil {
 				return grant_write_db_user_errors
@@ -353,27 +349,34 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			if read_user_exists_errors != nil {
 				return read_user_exists_errors
 			}
+
 			if !read_user_exists {
-				fmt.Println("creating read database user...")
 				read_db_user, create_read_user_errs := client.CreateUser(read_db_username+fmt.Sprintf("%d", user_count), read_db_password, db_hostname)
 				if create_read_user_errs != nil {
 					return create_read_user_errs
 				} else {
-					fmt.Println("updating read database user password...")
 					update_password_errs := read_db_user.UpdatePassword(read_db_password)
 					if update_password_errs != nil {
 						return update_password_errs
 					}
 				}
 			} else {
-				fmt.Println("(skip) read database user already exists...")
+				read_db_user, read_db_user_errors := client.GetUser(read_db_username + fmt.Sprintf("%d", user_count))
+				if read_db_user_errors != nil {
+					return read_db_user_errors
+				}
+
+				update_password_errs := read_db_user.UpdatePassword(read_db_password)
+				if update_password_errs != nil {
+					return update_password_errs
+				}
 			}
+
 			read_db_user, read_db_user_errors := client.GetUser(read_db_username + fmt.Sprintf("%d", user_count))
 			if read_db_user_errors != nil {
 				return read_db_user_errors
 			}
 
-			fmt.Println("granting permissions to read database user...")
 			_, grant_read_db_user_errors := client.Grant(*read_db_user, "SELECT", &database_filter, &table_filter)
 			if grant_read_db_user_errors != nil {
 				return grant_read_db_user_errors
@@ -418,13 +421,10 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 			database_migration_schema.SetMapValue("current", current_column_schema)
 			database_migration_schema.SetMapValue("desired", desired_column_schema)
 
-			fmt.Println("creating table database migration...")
 			_, create_table_errors := database.CreateTable("DatabaseMigration", database_migration_schema)
 			if create_table_errors != nil {
 				return create_table_errors
 			}
-		} else {
-			fmt.Println("(skip) table database migration already exists...")
 		}
 
 		data_migration_table, data_migration_table_errors := database.GetTable("DatabaseMigration")
@@ -439,23 +439,20 @@ func NewDatabaseInstaller(database_host_name string, database_port_number string
 		}
 
 		if *data_migration_table_record_count > 0 {
-			fmt.Println("(skip) database migration record already exists...")
 			return nil
 		}
 
-		fmt.Println("creating database migration record...")
 		default_record := json.NewMapValue()
 		inserted_record, inserted_record_errors := data_migration_table.CreateRecord(default_record)
 		if inserted_record_errors != nil {
 			return inserted_record_errors
 		}
 
-		inserted_record_value, inserted_record_value_errors := inserted_record.GetUInt64("database_migration_id")
+		_, inserted_record_value_errors := inserted_record.GetUInt64("database_migration_id")
 		if inserted_record_value_errors != nil {
 			return inserted_record_value_errors
 		}
 
-		fmt.Println(fmt.Sprintf("created database migration record with primary key: %s", strconv.FormatUint(*inserted_record_value, 10)))
 		return nil
 	}
 
